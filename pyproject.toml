@@ -29,9 +29,9 @@ dependencies = [
     "mcp>=1.0.0",
     "jieba>=0.42",
     "markitdown[pdf]>=0.1.0",
-    "streamlit>=1.30.0",
-    "ragas>=0.1.0",
-    "datasets>=2.0.0",
+    "openai>=1.0",
+    "httpx>=0.25",
+    "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]
@@ -42,7 +42,6 @@ dev = [
     "pytest-mock>=3.14",
     "ruff>=0.1.0",
     "mypy>=1.0",
-    "openai>=1.0",
 ]
 
 [tool.pytest.ini_options]

@@ -7,7 +7,6 @@ pluggable components:
 - Embedding services
 - Splitters
 - Vector stores
-- Rerankers
 - Evaluators
 """
 

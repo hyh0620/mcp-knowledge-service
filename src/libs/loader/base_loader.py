@@ -8,7 +8,7 @@ Design Principles:
 - Single Responsibility: Loaders only handle format unification + structure extraction
 - Type Safety: Return standardized Document type from core.types
 - No Splitting: Loaders don't chunk documents, only parse and normalize
-- Graceful Degradation: Failures in optional features (e.g., image extraction) shouldn't block text parsing
+- Graceful Degradation: Metadata extraction failures should not block text parsing
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ class BaseLoader(ABC):
     - Format-specific parsing logic
     - Metadata extraction (title, page count, etc.)
     - Structure normalization (to Markdown when possible)
-    - Optional: Image extraction and placeholder insertion
+    - Source metadata extraction
     """
     
     @abstractmethod

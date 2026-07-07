@@ -17,14 +17,6 @@ embedding:
   api_key: "${DASHSCOPE_API_KEY}"
   base_url: "${DASHSCOPE_BASE_URL}"
 
-vision_llm:
-  enabled: false
-  provider: "openai"
-  model: "${DASHSCOPE_CHAT_MODEL}"
-  api_key: "${DASHSCOPE_API_KEY}"
-  base_url: "${DASHSCOPE_BASE_URL}"
-  max_image_size: 2048
-
 vector_store:
   provider: "chroma"
   persist_directory: "./data/db/chroma"
@@ -36,19 +28,12 @@ retrieval:
   fusion_top_k: 10
   rrf_k: 60
 
-rerank:
-  enabled: false
-  provider: "none"
-  model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
-  top_k: 5
-
 evaluation:
-  enabled: false
+  enabled: true
   provider: "custom"
   metrics:
     - "hit_rate"
     - "mrr"
-    - "faithfulness"
 
 observability:
   log_level: "INFO"

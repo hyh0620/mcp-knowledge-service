@@ -222,10 +222,14 @@ class QueryProcessor:
         """
         tokens: List[str] = []
 
-        # Use jieba to segment (handles Chinese + keeps English intact)
+        # Preserve common English technical compounds before jieba splits them.
+        compound_pattern = re.compile(r"[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+)+")
+        compound_tokens = compound_pattern.findall(text)
+
+        # Use jieba to segment (handles Chinese + English).
         raw_tokens = jieba.lcut(text)
 
-        for token in raw_tokens:
+        for token in [*compound_tokens, *raw_tokens]:
             token = token.strip()
             if not token:
                 continue

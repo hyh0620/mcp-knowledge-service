@@ -6,7 +6,6 @@ This package contains the hybrid search engine components:
 - Dense retrieval (embedding-based)
 - Sparse retrieval (BM25)
 - Result fusion (RRF)
-- Reranking
 """
 
 from src.core.query_engine.query_processor import (

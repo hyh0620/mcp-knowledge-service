@@ -35,8 +35,6 @@ class TestDataIngestion:
         # Create subdirectories matching production structure
         (tmp_path / "db" / "chroma").mkdir(parents=True)
         (tmp_path / "db" / "bm25").mkdir(parents=True)
-        (tmp_path / "images").mkdir(parents=True)
-        
         yield tmp_path
         
         # Cleanup is handled by pytest tmp_path fixture
@@ -58,7 +56,7 @@ class TestDataIngestion:
         """Get path to complex technical document for testing.
         
         Returns:
-            Path to a complex PDF with images
+            Path to a complex PDF.
         """
         pdf_path = PROJECT_ROOT / "tests" / "fixtures" / "sample_documents" / "complex_technical_doc.pdf"
         if not pdf_path.exists():
@@ -115,7 +113,7 @@ class TestDataIngestion:
             capture_output=True,
             text=True,
             cwd=str(PROJECT_ROOT),
-            timeout=600,  # 10 minute timeout for LLM calls (complex docs with vision)
+            timeout=600,
             env=env,
             encoding='utf-8',
             errors='replace'
@@ -158,7 +156,7 @@ class TestDataIngestion:
         """Test dry-run mode doesn't process files."""
         result = self.run_ingest_script(
             path=str(sample_pdf),
-            dry_run=True
+            dry_run=True,
         )
         
         assert result.returncode == 0
@@ -179,6 +177,10 @@ class TestDataIngestion:
         assert "Unsupported" in result.stdout or "unsupported" in result.stdout.lower()
     
     @pytest.mark.integration
+    @pytest.mark.skipif(
+        os.getenv("RUN_REAL_INGESTION_E2E") != "1",
+        reason="real ingestion E2E is opt-in; default pytest must be offline",
+    )
     def test_ingest_simple_pdf(self, sample_pdf):
         """Test ingesting a simple PDF file.
         
@@ -200,12 +202,12 @@ class TestDataIngestion:
         assert "SUMMARY" in result.stdout
     
     @pytest.mark.integration
-    def test_ingest_complex_pdf_with_images(self, complex_pdf):
-        """Test ingesting a complex PDF with images.
-        
-        This test requires Azure API credentials and Vision LLM to be configured.
-        Tests the full pipeline including image captioning.
-        """
+    @pytest.mark.skipif(
+        os.getenv("RUN_REAL_INGESTION_E2E") != "1",
+        reason="real ingestion E2E is opt-in; default pytest must be offline",
+    )
+    def test_ingest_complex_pdf(self, complex_pdf):
+        """Test ingesting a complex PDF."""
         result = self.run_ingest_script(
             path=str(complex_pdf),
             collection="e2e_test_complex",
@@ -221,11 +223,15 @@ class TestDataIngestion:
         assert "Processing" in result.stdout
         assert "SUMMARY" in result.stdout
         
-        # If successful, should report chunks and possibly images
+        # If successful, should report chunks.
         if result.returncode == 0:
             assert "chunks" in result.stdout.lower()
     
     @pytest.mark.integration
+    @pytest.mark.skipif(
+        os.getenv("RUN_REAL_INGESTION_E2E") != "1",
+        reason="real ingestion E2E is opt-in; default pytest must be offline",
+    )
     def test_ingest_skip_already_processed(self, sample_pdf):
         """Test that already processed files are skipped.
         
@@ -258,6 +264,10 @@ class TestDataIngestion:
         assert "skip" in result2.stdout.lower() or "already processed" in result2.stdout.lower()
     
     @pytest.mark.integration
+    @pytest.mark.skipif(
+        os.getenv("RUN_REAL_INGESTION_E2E") != "1",
+        reason="real ingestion E2E is opt-in; default pytest must be offline",
+    )
     def test_ingest_force_reprocess(self, sample_pdf):
         """Test that --force flag causes re-processing."""
         # First run
@@ -301,7 +311,8 @@ class TestDataIngestion:
             path=str(test_dir),
             collection="e2e_test_dir",
             force=True,
-            verbose=True
+            verbose=True,
+            dry_run=True,
         )
         
         print("STDOUT:", result.stdout)
@@ -309,9 +320,10 @@ class TestDataIngestion:
         # Should find both files
         assert "2 file" in result.stdout
         
-        # Should attempt to process both
-        assert "[1/2]" in result.stdout
-        assert "[2/2]" in result.stdout
+        # Dry run should list both files without processing them.
+        assert "doc1.pdf" in result.stdout
+        assert "doc2.pdf" in result.stdout
+        assert "Dry run" in result.stdout or "dry run" in result.stdout.lower()
     
     def test_ingest_empty_directory(self, tmp_path):
         """Test handling of directory with no PDFs."""
@@ -330,6 +342,10 @@ class TestIngestScriptIntegration:
     """Integration tests that verify data persistence."""
     
     @pytest.mark.integration
+    @pytest.mark.skipif(
+        os.getenv("RUN_REAL_INGESTION_E2E") != "1",
+        reason="real ingestion E2E is opt-in; default pytest must be offline",
+    )
     def test_creates_vector_store_data(self, tmp_path):
         """Verify that ingestion creates vector store data."""
         # This test verifies the pipeline creates the expected output files

@@ -134,14 +134,6 @@ class RetrievalSettings:
 
 
 @dataclass(frozen=True)
-class RerankSettings:
-    enabled: bool
-    provider: str
-    model: str
-    top_k: int
-
-
-@dataclass(frozen=True)
 class EvaluationSettings:
     enabled: bool
     provider: str
@@ -154,19 +146,6 @@ class ObservabilitySettings:
     trace_enabled: bool
     trace_file: str
     structured_logging: bool
-
-
-@dataclass(frozen=True)
-class VisionLLMSettings:
-    enabled: bool
-    provider: str
-    model: str
-    max_image_size: int
-    api_key: Optional[str] = None
-    api_version: Optional[str] = None
-    azure_endpoint: Optional[str] = None
-    deployment_name: Optional[str] = None
-    base_url: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -185,11 +164,9 @@ class Settings:
     embedding: EmbeddingSettings
     vector_store: VectorStoreSettings
     retrieval: RetrievalSettings
-    rerank: RerankSettings
     evaluation: EvaluationSettings
     observability: ObservabilitySettings
     ingestion: Optional[IngestionSettings] = None
-    vision_llm: Optional[VisionLLMSettings] = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Settings":
@@ -200,7 +177,6 @@ class Settings:
         embedding = _require_mapping(data, "embedding", "settings")
         vector_store = _require_mapping(data, "vector_store", "settings")
         retrieval = _require_mapping(data, "retrieval", "settings")
-        rerank = _require_mapping(data, "rerank", "settings")
         evaluation = _require_mapping(data, "evaluation", "settings")
         observability = _require_mapping(data, "observability", "settings")
 
@@ -214,21 +190,6 @@ class Settings:
                 batch_size=_require_int(ingestion, "batch_size", "ingestion"),
                 chunk_refiner=ingestion.get("chunk_refiner"),  # 可选配置
                 metadata_enricher=ingestion.get("metadata_enricher"),  # 可选配置
-            )
-
-        vision_llm_settings = None
-        if "vision_llm" in data:
-            vision_llm = _require_mapping(data, "vision_llm", "settings")
-            vision_llm_settings = VisionLLMSettings(
-                enabled=_require_bool(vision_llm, "enabled", "vision_llm"),
-                provider=_require_str(vision_llm, "provider", "vision_llm"),
-                model=_require_str(vision_llm, "model", "vision_llm"),
-                max_image_size=_require_int(vision_llm, "max_image_size", "vision_llm"),
-                api_key=vision_llm.get("api_key"),
-                api_version=vision_llm.get("api_version"),
-                azure_endpoint=vision_llm.get("azure_endpoint"),
-                deployment_name=vision_llm.get("deployment_name"),
-                base_url=vision_llm.get("base_url"),
             )
 
         settings = cls(
@@ -264,12 +225,6 @@ class Settings:
                 fusion_top_k=_require_int(retrieval, "fusion_top_k", "retrieval"),
                 rrf_k=_require_int(retrieval, "rrf_k", "retrieval"),
             ),
-            rerank=RerankSettings(
-                enabled=_require_bool(rerank, "enabled", "rerank"),
-                provider=_require_str(rerank, "provider", "rerank"),
-                model=_require_str(rerank, "model", "rerank"),
-                top_k=_require_int(rerank, "top_k", "rerank"),
-            ),
             evaluation=EvaluationSettings(
                 enabled=_require_bool(evaluation, "enabled", "evaluation"),
                 provider=_require_str(evaluation, "provider", "evaluation"),
@@ -282,7 +237,6 @@ class Settings:
                 structured_logging=_require_bool(observability, "structured_logging", "observability"),
             ),
             ingestion=ingestion_settings,
-            vision_llm=vision_llm_settings,
         )
 
         return settings
@@ -299,8 +253,6 @@ def validate_settings(settings: Settings) -> None:
         raise SettingsError("Missing required field: vector_store.provider")
     if not settings.retrieval.rrf_k:
         raise SettingsError("Missing required field: retrieval.rrf_k")
-    if not settings.rerank.provider:
-        raise SettingsError("Missing required field: rerank.provider")
     if not settings.evaluation.provider:
         raise SettingsError("Missing required field: evaluation.provider")
     if not settings.observability.log_level:

@@ -223,7 +223,7 @@ class SparseRetriever:
         """Ensure the BM25 index is loaded for the given collection.
         
         Always reloads from disk because the index may have been updated
-        by another process (e.g., dashboard ingestion).  The load is
+        by another ingestion process.  The load is
         fast (a single JSON file read) compared to the overall query.
         
         Args:

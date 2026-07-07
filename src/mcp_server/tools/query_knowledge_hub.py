@@ -1,8 +1,8 @@
 """MCP Tool: query_knowledge_hub
 
 This tool provides knowledge retrieval capabilities through the MCP protocol.
-It combines HybridSearch (Dense + Sparse + RRF Fusion) with optional Reranking
-to find relevant documents and return formatted results with citations.
+It combines HybridSearch (Dense + Sparse + RRF Fusion) to find relevant
+documents and return formatted results with citations.
 
 Usage via MCP:
     Tool name: query_knowledge_hub
@@ -28,7 +28,6 @@ from src.core.types import RetrievalResult
 
 if TYPE_CHECKING:
     from src.core.query_engine.hybrid_search import HybridSearch
-    from src.core.query_engine.reranker import CoreReranker
 
 logger = logging.getLogger(__name__)
 
@@ -77,23 +76,21 @@ class QueryKnowledgeHubConfig:
         default_top_k: Default number of results if not specified
         max_top_k: Maximum allowed top_k value
         default_collection: Default collection if not specified
-        enable_rerank: Whether to apply reranking
     """
     default_top_k: int = 5
     max_top_k: int = 20
     default_collection: str = "knowledge_hub"
-    enable_rerank: bool = True
 
 
 class QueryKnowledgeHubTool:
     """MCP Tool for knowledge base queries.
     
     This class encapsulates the query_knowledge_hub tool logic,
-    coordinating HybridSearch and Reranker to produce formatted results.
+    coordinating HybridSearch to produce formatted results.
     
     Design Principles:
     - Lazy initialization: Components created on first use
-    - Error resilience: Graceful handling of search/rerank failures
+    - Error resilience: Graceful handling of search failures
     - Configurable: All parameters from settings.yaml
     
     Example:
@@ -107,7 +104,6 @@ class QueryKnowledgeHubTool:
         settings: Optional[Settings] = None,
         config: Optional[QueryKnowledgeHubConfig] = None,
         hybrid_search: Optional[HybridSearch] = None,
-        reranker: Optional[CoreReranker] = None,
         response_builder: Optional[ResponseBuilder] = None,
     ) -> None:
         """Initialize QueryKnowledgeHubTool.
@@ -116,13 +112,11 @@ class QueryKnowledgeHubTool:
             settings: Application settings. If None, loaded from default path.
             config: Tool configuration. If None, uses defaults.
             hybrid_search: Optional pre-configured HybridSearch instance.
-            reranker: Optional pre-configured CoreReranker instance.
             response_builder: Optional pre-configured ResponseBuilder instance.
         """
         self._settings = settings
         self.config = config or QueryKnowledgeHubConfig()
         self._hybrid_search = hybrid_search
-        self._reranker = reranker
         self._embedding_client = None
         self._response_builder = response_builder or ResponseBuilder()
         
@@ -142,7 +136,7 @@ class QueryKnowledgeHubTool:
         
         Caching strategy (balances speed vs freshness):
         - **Fully cached** (stateless, never go stale): embedding client,
-          reranker, query processor, settings.
+          query processor, settings.
         - **Cached until collection changes**: vector store (ChromaDB
           PersistentClient reads from SQLite — sees data written by other
           processes), dense retriever, hybrid search.
@@ -156,7 +150,7 @@ class QueryKnowledgeHubTool:
             collection: Target collection name.
         """
         # Always rebuild vector_store and retriever components so that
-        # data ingested by other processes (e.g. Dashboard) is visible
+        # data ingested by other processes is visible
         # immediately without requiring an MCP Server restart.
         
         logger.info(f"Initializing query components for collection: {collection}")
@@ -166,7 +160,6 @@ class QueryKnowledgeHubTool:
         from src.core.query_engine.hybrid_search import create_hybrid_search
         from src.core.query_engine.dense_retriever import create_dense_retriever
         from src.core.query_engine.sparse_retriever import create_sparse_retriever
-        from src.core.query_engine.reranker import create_core_reranker
         from src.ingestion.storage.bm25_indexer import BM25Indexer
         from src.libs.embedding.embedding_factory import EmbeddingFactory
         from src.libs.vector_store.vector_store_factory import VectorStoreFactory
@@ -175,13 +168,10 @@ class QueryKnowledgeHubTool:
         if self._embedding_client is None:
             self._embedding_client = EmbeddingFactory.create(self.settings)
         
-        if self._reranker is None:
-            self._reranker = create_core_reranker(settings=self.settings)
-        
         # === Rebuild for new collection ===
         # ChromaDB PersistentClient uses SQLite under the hood —
-        # concurrent readers see committed writes from other processes
-        # (dashboard ingestion), so caching the client is safe.
+        # concurrent readers see committed writes from other processes,
+        # so caching the client is safe.
         vector_store = VectorStoreFactory.create(
             self.settings,
             collection_name=collection,
@@ -195,7 +185,7 @@ class QueryKnowledgeHubTool:
         
         # BM25Indexer just holds the index dir path; the SparseRetriever
         # calls _ensure_index_loaded() on every search, which always
-        # reloads from disk — so it picks up dashboard-written data.
+        # reloads from disk — so it picks up newly written data.
         bm25_indexer = BM25Indexer(index_dir=str(resolve_path(f"data/db/bm25/{collection}")))
         sparse_retriever = create_sparse_retriever(
             settings=self.settings,
@@ -275,12 +265,6 @@ class QueryKnowledgeHubTool:
                 self._perform_search, query, effective_top_k, trace,
             )
             
-            # Apply reranking if enabled (may call LLM API)
-            if self.config.enable_rerank and results:
-                results = await asyncio.to_thread(
-                    self._apply_rerank, query, results, effective_top_k, trace,
-                )
-            
             # Build response
             response = self._response_builder.build(
                 results=results,
@@ -288,7 +272,7 @@ class QueryKnowledgeHubTool:
                 collection=effective_collection,
             )
             
-            # Store final results in trace for dashboard display
+            # Store final results in trace for diagnostics.
             trace.metadata["final_results"] = [
                 {
                     "chunk_id": r.chunk_id,
@@ -333,13 +317,10 @@ class QueryKnowledgeHubTool:
         if self._hybrid_search is None:
             raise RuntimeError("HybridSearch not initialized")
         
-        # Use a larger initial retrieval for reranking
-        initial_top_k = top_k * 2 if self.config.enable_rerank else top_k
-        
         try:
             results = self._hybrid_search.search(
                 query=query,
-                top_k=initial_top_k,
+                top_k=top_k,
                 filters=None,
                 trace=trace,
                 return_details=False,
@@ -348,45 +329,6 @@ class QueryKnowledgeHubTool:
         except Exception as e:
             logger.warning(f"Hybrid search failed: {e}")
             return []
-    
-    def _apply_rerank(
-        self,
-        query: str,
-        results: List[RetrievalResult],
-        top_k: int,
-        trace: Optional[Any] = None,
-    ) -> List[RetrievalResult]:
-        """Apply reranking to search results.
-        
-        Args:
-            query: Original query.
-            results: Search results to rerank.
-            top_k: Final number of results.
-            trace: Optional TraceContext for observability.
-            
-        Returns:
-            Reranked results (or original if reranking fails).
-        """
-        if self._reranker is None or not self._reranker.is_enabled:
-            return results[:top_k]
-        
-        try:
-            rerank_result = self._reranker.rerank(
-                query=query,
-                results=results,
-                top_k=top_k,
-                trace=trace,
-            )
-            
-            if rerank_result.used_fallback:
-                logger.warning(
-                    f"Reranker fallback: {rerank_result.fallback_reason}"
-                )
-            
-            return rerank_result.results
-        except Exception as e:
-            logger.warning(f"Reranking failed, using original order: {e}")
-            return results[:top_k]
     
     def _build_error_response(
         self,
@@ -454,16 +396,13 @@ async def query_knowledge_hub_handler(
     This function is registered with the ProtocolHandler and called
     when the MCP client invokes the query_knowledge_hub tool.
     
-    Supports multimodal responses - if search results contain images,
-    the response will include ImageContent blocks alongside TextContent.
-    
     Args:
         query: Search query string.
         top_k: Maximum number of results.
         collection: Optional collection name.
         
     Returns:
-        MCP CallToolResult with content blocks (text and optionally images).
+        MCP CallToolResult with text content blocks.
     """
     tool = get_tool_instance()
     
@@ -474,7 +413,6 @@ async def query_knowledge_hub_handler(
             collection=collection,
         )
         
-        # Use to_mcp_content() which handles multimodal (text + images)
         content_blocks = response.to_mcp_content()
         
         return types.CallToolResult(

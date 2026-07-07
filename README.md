@@ -135,9 +135,6 @@ Additional unit/integration tests may require local provider credentials or gene
 
 ## Known Limits
 
-- Rerank is disabled in the public example configuration.
-- Ragas evaluation is not claimed as part of the verified public release.
-- Multimodal workflows are not claimed as verified public functionality.
 - Runtime ChromaDB, BM25, SQLite, logs, and traces are not committed.
 
 ## Skills

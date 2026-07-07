@@ -18,6 +18,11 @@ from src.core.types import Chunk
 from src.core.trace.trace_context import TraceContext
 from src.ingestion.transform.chunk_refiner import ChunkRefiner
 
+pytestmark = pytest.mark.skipif(
+    os.getenv("RUN_REAL_LLM_TESTS") != "1",
+    reason="real LLM integration tests are opt-in; default pytest must be offline",
+)
+
 
 # Test data: Realistic noisy chunk from PDF extraction
 NOISY_PDF_CHUNK = """

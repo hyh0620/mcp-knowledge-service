@@ -25,7 +25,7 @@ def _fake_document(path: str = "test.pdf") -> Document:
     return Document(
         id="doc_hash_abc123",
         text="Hello world. " * 50,
-        metadata={"source_path": path, "images": []},
+        metadata={"source_path": path},
     )
 
 
@@ -71,9 +71,6 @@ class FakePipeline:
         self.metadata_enricher = MagicMock()
         self.metadata_enricher.transform.return_value = chunks
 
-        self.image_captioner = MagicMock()
-        self.image_captioner.transform.return_value = chunks
-
         self.batch_processor = MagicMock()
         self.batch_processor.process.return_value = FakeBatchResult()
 
@@ -81,7 +78,6 @@ class FakePipeline:
         self.vector_upserter.upsert.return_value = ["vid_0", "vid_1", "vid_2"]
 
         self.bm25_indexer = MagicMock()
-        self.image_storage = MagicMock()
 
 
 def _run_fake_pipeline(trace: Optional[TraceContext] = None):

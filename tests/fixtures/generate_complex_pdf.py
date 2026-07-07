@@ -97,7 +97,7 @@ def generate_complex_pdf(output_path):
     # Add author info
     author_data = [
         ['Author:', 'AI Research Team'],
-        ['Department:', 'Machine Learning Division'],
+        ['Department:', 'Machine Learning Group'],
         ['Document Type:', 'Technical Specification'],
         ['Classification:', 'Internal Testing']
     ]
@@ -150,11 +150,11 @@ def generate_complex_pdf(output_path):
     # Key Features List
     elements.append(Paragraph("<b>Key Features:</b>", body_style))
     features = [
-        "Multiple embedding provider support (OpenAI, Azure, Ollama, Sentence Transformers)",
+        "OpenAI-compatible embedding provider support",
         "Flexible chunking strategies with metadata preservation",
         "Hybrid search combining dense and sparse retrieval",
-        "Advanced reranking with cross-encoder models",
-        "Comprehensive observability and evaluation framework",
+        "Reciprocal Rank Fusion for result merging",
+        "Retrieval evaluation with objective metrics",
         "Production-ready error handling and logging"
     ]
     
@@ -183,9 +183,8 @@ def generate_complex_pdf(output_path):
         ['Component', 'Purpose', 'Key Technologies'],
         ['Document Loaders', 'Parse and extract content', 'PyPDF2, python-docx, BeautifulSoup'],
         ['Chunking Engine', 'Split documents intelligently', 'LangChain, custom algorithms'],
-        ['Embedding Service', 'Generate vector representations', 'OpenAI, HuggingFace, Ollama'],
+        ['Embedding Service', 'Generate vector representations', 'OpenAI-compatible API'],
         ['Vector Store', 'Persist and query embeddings', 'ChromaDB'],
-        ['Reranker', 'Refine retrieval results', 'Cross-encoder models'],
         ['Query Engine', 'Orchestrate retrieval pipeline', 'Custom implementation']
     ]
     
@@ -314,7 +313,7 @@ def generate_complex_pdf(output_path):
     similarity search with sparse BM25 ranking. This dual-mode retrieval strategy 
     leverages the semantic understanding of neural embeddings while preserving 
     the precision of traditional keyword matching. The results from both methods 
-    are merged and reranked using a cross-encoder model for optimal relevance.
+    are merged using Reciprocal Rank Fusion for balanced relevance.
     """
     elements.append(Paragraph(retrieval_text, body_style))
     
@@ -340,7 +339,7 @@ def generate_complex_pdf(output_path):
     
     # Performance metrics table
     perf_data = [
-        ['Metric', 'Pure Dense', 'Pure Sparse', 'Hybrid + Rerank'],
+        ['Metric', 'Pure Dense', 'Pure Sparse', 'Hybrid RRF'],
         ['Precision@5', '0.72', '0.68', '0.85'],
         ['Recall@10', '0.65', '0.71', '0.82'],
         ['NDCG@10', '0.78', '0.73', '0.88'],
@@ -361,15 +360,13 @@ def generate_complex_pdf(output_path):
     elements.append(perf_table)
     elements.append(PageBreak())
     
-    # Chapter 7: Visual Components
-    elements.append(Paragraph("7. Visual Components Analysis", heading_style))
+    # Chapter 7: Citation Components
+    elements.append(Paragraph("7. Citation and Evaluation", heading_style))
     
     visual_text = """
-    The system includes specialized handling for visual content in documents. 
-    Images are extracted, stored separately with content-addressed filenames 
-    (SHA256 hashes), and processed through vision-language models to generate 
-    descriptive captions. These captions are embedded alongside text chunks, 
-    enabling multimodal retrieval capabilities.
+    The system preserves source metadata for each chunk so query responses can
+    include citations. Retrieval quality is measured with deterministic metrics
+    such as Hit@K, MRR, and expected-source match rate.
     """
     elements.append(Paragraph(visual_text, body_style))
     
@@ -381,16 +378,14 @@ def generate_complex_pdf(output_path):
     
     img_flowable3 = Image(img_buffer3, width=4*inch, height=2.5*inch)
     elements.append(img_flowable3)
-    elements.append(Paragraph("<i>Figure 3: Visual Content Processing Pipeline</i>", 
+    elements.append(Paragraph("<i>Figure 3: Retrieval Evaluation Summary</i>", 
                               styles['Normal']))
     elements.append(Spacer(1, 0.3*inch))
     
     visual_text2 = """
-    The vision processing pipeline integrates with Azure Computer Vision and 
-    GPT-4 Vision APIs to extract semantic information from diagrams, charts, 
-    screenshots, and photographs. This visual understanding is crucial for 
-    technical documentation where important information is often conveyed 
-    through images rather than text.
+    Evaluation outputs separate functional contract success from retrieval
+    quality. This keeps system health checks distinct from search ranking
+    measurements and avoids overstating retrieval performance.
     """
     elements.append(Paragraph(visual_text2, body_style))
     elements.append(PageBreak())

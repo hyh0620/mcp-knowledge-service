@@ -34,7 +34,7 @@ def _make_fake_pipeline() -> object:
     # Stage 2: loader
     fp.loader = MagicMock()
     fp.loader.load.return_value = Document(
-        id="doc1", text="Hello world. " * 50, metadata={"source_path": "test.pdf", "images": []}
+        id="doc1", text="Hello world. " * 50, metadata={"source_path": "test.pdf"}
     )
 
     # Stage 3: chunker
@@ -50,8 +50,6 @@ def _make_fake_pipeline() -> object:
     fp.chunk_refiner.transform.return_value = chunks
     fp.metadata_enricher = MagicMock()
     fp.metadata_enricher.transform.return_value = chunks
-    fp.image_captioner = MagicMock()
-    fp.image_captioner.transform.return_value = chunks
 
     # Stage 5: encoding
     batch_result = MagicMock()
@@ -64,7 +62,6 @@ def _make_fake_pipeline() -> object:
     fp.vector_upserter = MagicMock()
     fp.vector_upserter.upsert.return_value = ["v0", "v1", "v2"]
     fp.bm25_indexer = MagicMock()
-    fp.image_storage = MagicMock()
 
     return fp
 

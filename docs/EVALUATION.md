@@ -27,5 +27,4 @@ Retrieval evaluation should use a golden dataset with expected source documents.
 
 - Always report sample count.
 - Do not use subjective LLM scoring as objective retrieval quality.
-- Do not claim Rerank or Ragas results unless they were actually run.
 - Keep raw local reports out of git if they contain local paths, trace IDs, or environment details.

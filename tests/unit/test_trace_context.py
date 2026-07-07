@@ -61,7 +61,7 @@ class TestRecordStage:
 
     def test_record_stage_with_elapsed(self) -> None:
         tc = TraceContext()
-        tc.record_stage("rerank", {"backend": "cross_encoder"}, elapsed_ms=42.5)
+        tc.record_stage("fusion", {"backend": "rrf"}, elapsed_ms=42.5)
         entry = tc.stages[0]
         assert entry["elapsed_ms"] == 42.5
 

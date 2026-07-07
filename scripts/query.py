@@ -2,17 +2,14 @@
 """Query script for the MCP Knowledge Service.
 
 This script provides a command-line interface for querying the knowledge hub
-using HybridSearch (Dense + Sparse + RRF) with optional reranking.
+using HybridSearch (Dense + Sparse + RRF).
 
 Usage:
     # Run a single query
     python scripts/query.py --query "Azure OpenAI 配置步骤" --collection technical_docs
 
-    # Verbose mode (show dense/sparse/fusion/rerank results)
+    # Verbose mode (show dense/sparse/fusion results)
     python scripts/query.py --query "RRF 是什么" --verbose
-
-    # Disable reranking
-    python scripts/query.py --query "RRF 是什么" --no-rerank
 
 Exit codes:
     0 - Success
@@ -45,7 +42,6 @@ from src.core.query_engine.query_processor import QueryProcessor
 from src.core.query_engine.hybrid_search import create_hybrid_search
 from src.core.query_engine.dense_retriever import create_dense_retriever
 from src.core.query_engine.sparse_retriever import create_sparse_retriever
-from src.core.query_engine.reranker import create_core_reranker
 from src.core.trace import TraceContext, TraceCollector
 from src.ingestion.storage.bm25_indexer import BM25Indexer
 from src.libs.embedding.embedding_factory import EmbeddingFactory
@@ -89,15 +85,9 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--no-rerank",
-        action="store_true",
-        help="Disable reranking even if enabled in settings"
-    )
-
-    parser.add_argument(
         "--verbose",
         action="store_true",
-        help="Print intermediate results (dense/sparse/fusion/rerank)"
+        help="Print intermediate results (dense/sparse/fusion)"
     )
 
     return parser.parse_args()
@@ -162,17 +152,13 @@ def _build_components(settings, collection: str):
         sparse_retriever=sparse_retriever,
     )
 
-    reranker = create_core_reranker(settings=settings)
-
-    return hybrid_search, reranker
+    return hybrid_search
 
 
 def _run_query(
     hybrid_search,
-    reranker,
     query: str,
     top_k: Optional[int],
-    use_rerank: bool,
     verbose: bool,
 ) -> int:
     trace = TraceContext(trace_type="query")
@@ -217,23 +203,6 @@ def _run_query(
         print("[INFO] 未找到相关文档，请先运行 ingest.py 摄取数据。")
         return 0
 
-    # Optional reranking
-    if use_rerank and reranker.is_enabled:
-        try:
-            rerank_result = reranker.rerank(query=query, results=results, top_k=top_k, trace=trace)
-            results = rerank_result.results
-            if verbose and rerank_result.used_fallback:
-                print(
-                    f"[WARN] Rerank fallback used: {rerank_result.fallback_reason} "
-                    f"(reranker={rerank_result.reranker_type})"
-                )
-            if verbose:
-                _print_results(results, top_k=top_k, title="RERANK RESULTS")
-        except Exception as e:
-            print(f"[WARN] Reranking failed: {e}. Using original order.")
-    elif verbose and not reranker.is_enabled:
-        print("[INFO] Reranking disabled by settings.")
-
     _print_results(results, top_k=effective_top_k)
     TraceCollector().collect(trace)
     return 0
@@ -259,21 +228,17 @@ def main() -> int:
     print(f"Collection: {args.collection}")
 
     try:
-        hybrid_search, reranker = _build_components(settings, args.collection)
+        hybrid_search = _build_components(settings, args.collection)
     except Exception as e:
         print(f"[FAIL] Failed to initialize query components: {e}")
         logger.exception("Query initialization failed")
         return 2
 
-    use_rerank = not args.no_rerank
-
     # Single-query mode
     return _run_query(
         hybrid_search=hybrid_search,
-        reranker=reranker,
         query=args.query,
         top_k=args.top_k,
-        use_rerank=use_rerank,
         verbose=args.verbose,
     )
 

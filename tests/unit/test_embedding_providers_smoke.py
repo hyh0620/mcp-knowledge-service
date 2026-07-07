@@ -234,6 +234,8 @@ class TestAzureEmbedding:
         self, mock_settings_azure: Any, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test initialization with Azure environment variables."""
+        mock_settings_azure.embedding.api_key = None
+        mock_settings_azure.embedding.azure_endpoint = None
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "azure-env-key")
         monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://env.openai.azure.com/")
         

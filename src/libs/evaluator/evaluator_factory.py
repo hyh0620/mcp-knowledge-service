@@ -15,18 +15,6 @@ if TYPE_CHECKING:
     from src.core.settings import Settings
 
 
-def _get_ragas_evaluator() -> type[BaseEvaluator]:
-    """Lazy import RagasEvaluator to avoid hard dependency on ragas."""
-    from src.observability.evaluation.ragas_evaluator import RagasEvaluator
-    return RagasEvaluator
-
-
-def _get_composite_evaluator() -> type[BaseEvaluator]:
-    """Lazy import CompositeEvaluator."""
-    from src.observability.evaluation.composite_evaluator import CompositeEvaluator
-    return CompositeEvaluator
-
-
 class EvaluatorFactory:
     """Factory for creating Evaluator provider instances.
 
@@ -41,18 +29,12 @@ class EvaluatorFactory:
         "custom": CustomEvaluator,
     }
 
-    # Lazy-loaded providers (import on demand to avoid hard dependencies)
-    _LAZY_PROVIDERS: dict[str, Any] = {
-        "ragas": _get_ragas_evaluator,
-        "composite": _get_composite_evaluator,
-    }
-
     @classmethod
     def register_provider(cls, name: str, provider_class: type[BaseEvaluator]) -> None:
         """Register a new Evaluator provider implementation.
 
         Args:
-            name: The provider identifier (e.g., 'ragas', 'custom').
+            name: The provider identifier (e.g., 'custom').
             provider_class: The BaseEvaluator subclass implementing the provider.
 
         Raises:
@@ -102,17 +84,8 @@ class EvaluatorFactory:
             return NoneEvaluator(settings=settings, **override_kwargs)
 
         provider_class = cls._PROVIDERS.get(provider_name)
-        if provider_class is None and provider_name in cls._LAZY_PROVIDERS:
-            try:
-                provider_class = cls._LAZY_PROVIDERS[provider_name]()
-                cls._PROVIDERS[provider_name] = provider_class  # cache for next call
-            except ImportError as e:
-                raise ValueError(
-                    f"Provider '{provider_name}' requires additional dependencies: {e}"
-                ) from e
         if provider_class is None:
-            all_providers = sorted(set(cls._PROVIDERS.keys()) | set(cls._LAZY_PROVIDERS.keys()))
-            available = ", ".join(all_providers) if all_providers else "none"
+            available = ", ".join(sorted(cls._PROVIDERS.keys())) if cls._PROVIDERS else "none"
             raise ValueError(
                 f"Unsupported Evaluator provider: '{provider_name}'. "
                 f"Available providers: {available}."

@@ -431,7 +431,7 @@ def test_process_integration_with_encoders():
     chunks = [
         Chunk(id="doc1_chunk0", text="machine learning systems", metadata={"source_path": "doc1.pdf", "source": "doc1"}),
         Chunk(id="doc1_chunk1", text="natural language processing", metadata={"source_path": "doc1.pdf", "source": "doc1"}),
-        Chunk(id="doc2_chunk0", text="computer vision models", metadata={"source_path": "doc2.pdf", "source": "doc2"})
+        Chunk(id="doc2_chunk0", text="computer graphics models", metadata={"source_path": "doc2.pdf", "source": "doc2"})
     ]
     
     result = processor.process(chunks)

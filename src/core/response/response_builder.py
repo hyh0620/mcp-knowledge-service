@@ -3,14 +3,13 @@
 This module builds structured responses for MCP tools, combining:
 - Human-readable Markdown content with citation markers
 - Structured citation data for machine consumption
-- Multimodal content (text + images) support
 - Proper handling of empty results and error cases
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from mcp import types
 
@@ -27,13 +26,11 @@ class MCPToolResponse:
         citations: List of structured citations for reference
         metadata: Additional response metadata (query, result_count, etc.)
         is_empty: Whether the search returned no results
-        image_contents: List of MCP ImageContent blocks for multimodal responses
     """
     content: str
     citations: List[Citation] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
     is_empty: bool = False
-    image_contents: List[types.ImageContent] = field(default_factory=list)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for MCP protocol.
@@ -50,32 +47,25 @@ class MCPToolResponse:
             }
         }
     
-    def to_mcp_content(self) -> List[Union[types.TextContent, types.ImageContent]]:
+    def to_mcp_content(self) -> List[types.TextContent]:
         """Convert to MCP content blocks format.
         
         Returns:
-            List of content blocks for MCP CallToolResult.
-            Includes TextContent and optionally ImageContent blocks.
+            List of text content blocks for MCP CallToolResult.
         """
-        blocks: List[Union[types.TextContent, types.ImageContent]] = [
+        blocks: List[types.TextContent] = [
             types.TextContent(
                 type="text",
                 text=self.content,
             )
         ]
-        
-        # Add image blocks if present (multimodal response)
-        if self.image_contents:
-            blocks.extend(self.image_contents)
-        
+
         # Add structured data as a separate text block (JSON format)
         if self.citations or self.metadata:
             import json
             structured = {
                 "citations": [c.to_dict() for c in self.citations],
                 "metadata": self.metadata,
-                "has_images": len(self.image_contents) > 0,
-                "image_count": len(self.image_contents),
             }
             blocks.append(
                 types.TextContent(
@@ -85,15 +75,6 @@ class MCPToolResponse:
             )
         
         return blocks
-    
-    @property
-    def has_images(self) -> bool:
-        """Check if response contains images.
-        
-        Returns:
-            True if response has image content, False otherwise.
-        """
-        return len(self.image_contents) > 0
 
 
 class ResponseBuilder:
@@ -103,59 +84,37 @@ class ResponseBuilder:
     including human-readable Markdown with inline citations and structured
     citation data for machine consumption.
     
-    Supports multimodal responses with images when results contain image
-    references in their metadata.
-    
     Example:
         >>> builder = ResponseBuilder()
         >>> results = [RetrievalResult(chunk_id="doc1_001", score=0.95, ...)]
         >>> response = builder.build(results, "What is Azure OpenAI?")
         >>> print(response.content)  # Markdown with [1], [2] markers
         >>> print(response.citations[0].source)  # "docs/guide.pdf"
-        >>> print(response.has_images)  # True if images found
     """
     
     def __init__(
         self,
         citation_generator: Optional[CitationGenerator] = None,
-        multimodal_assembler: Optional["MultimodalAssembler"] = None,
         max_results_in_content: int = 5,
         snippet_max_length: int = 300,
-        enable_multimodal: bool = True,
     ) -> None:
         """Initialize ResponseBuilder.
         
         Args:
             citation_generator: Optional CitationGenerator instance.
                 If None, creates a default one.
-            multimodal_assembler: Optional MultimodalAssembler for image handling.
-                If None and enable_multimodal=True, creates a default one.
             max_results_in_content: Maximum results to show in Markdown content.
             snippet_max_length: Maximum characters per result snippet in content.
-            enable_multimodal: Whether to include images in response (default: True).
         """
         self.citation_generator = citation_generator or CitationGenerator()
         self.max_results_in_content = max_results_in_content
         self.snippet_max_length = snippet_max_length
-        self.enable_multimodal = enable_multimodal
-        
-        # Lazy-load multimodal assembler to avoid circular imports
-        self._multimodal_assembler = multimodal_assembler
-    
-    @property
-    def multimodal_assembler(self) -> "MultimodalAssembler":
-        """Get or create MultimodalAssembler instance."""
-        if self._multimodal_assembler is None:
-            from src.core.response.multimodal_assembler import MultimodalAssembler
-            self._multimodal_assembler = MultimodalAssembler()
-        return self._multimodal_assembler
     
     def build(
         self,
         results: List[RetrievalResult],
         query: str,
         collection: Optional[str] = None,
-        include_images: bool = True,
     ) -> MCPToolResponse:
         """Build MCP response from retrieval results.
         
@@ -163,10 +122,9 @@ class ResponseBuilder:
             results: List of RetrievalResult from search.
             query: Original user query.
             collection: Optional collection name.
-            include_images: Whether to include images in response (default: True).
             
         Returns:
-            MCPToolResponse with formatted content, citations, and optional images.
+            MCPToolResponse with formatted content and citations.
         """
         # Handle empty results
         if not results:
@@ -180,26 +138,12 @@ class ResponseBuilder:
         
         # Build metadata
         metadata = self._build_metadata(query, collection, len(results))
-        
-        # Assemble image content if enabled
-        image_contents: List[types.ImageContent] = []
-        if self.enable_multimodal and include_images:
-            image_blocks = self.multimodal_assembler.assemble(results, collection)
-            # Filter to only ImageContent blocks
-            image_contents = [
-                block for block in image_blocks
-                if isinstance(block, types.ImageContent)
-            ]
-            if image_contents:
-                metadata["has_images"] = True
-                metadata["image_count"] = len(image_contents)
-        
+
         return MCPToolResponse(
             content=content,
             citations=citations,
             metadata=metadata,
             is_empty=False,
-            image_contents=image_contents,
         )
     
     def _build_empty_response(

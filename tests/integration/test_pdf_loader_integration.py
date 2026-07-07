@@ -15,7 +15,7 @@ from src.libs.loader.pdf_loader import PdfLoader
 # Fixture paths
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures" / "sample_documents"
 SIMPLE_PDF = FIXTURES_DIR / "simple.pdf"
-IMAGES_PDF = FIXTURES_DIR / "with_images.pdf"
+COMPLEX_PDF = FIXTURES_DIR / "complex_technical_doc.pdf"
 
 
 class TestPdfLoaderWithRealFiles:
@@ -25,9 +25,9 @@ class TestPdfLoaderWithRealFiles:
         """Verify test fixture exists."""
         assert SIMPLE_PDF.exists(), f"Test fixture not found: {SIMPLE_PDF}"
     
-    def test_images_pdf_exists(self):
-        """Verify test fixture with images exists."""
-        assert IMAGES_PDF.exists(), f"Test fixture not found: {IMAGES_PDF}"
+    def test_complex_pdf_exists(self):
+        """Verify second test fixture exists."""
+        assert COMPLEX_PDF.exists(), f"Test fixture not found: {COMPLEX_PDF}"
     
     def test_load_simple_pdf(self):
         """Load a simple text-only PDF and verify Document structure."""
@@ -52,10 +52,10 @@ class TestPdfLoaderWithRealFiles:
         # Verify text content contains expected keywords
         assert "sample" in doc.text.lower() or "test" in doc.text.lower()
     
-    def test_load_pdf_with_images(self):
-        """Load a PDF with images and verify Document structure."""
-        loader = PdfLoader(extract_images=True)
-        doc = loader.load(IMAGES_PDF)
+    def test_load_complex_pdf(self):
+        """Load a second PDF and verify Document structure."""
+        loader = PdfLoader()
+        doc = loader.load(COMPLEX_PDF)
         
         # Verify Document structure
         assert isinstance(doc, Document)
@@ -63,24 +63,9 @@ class TestPdfLoaderWithRealFiles:
         assert len(doc.text) > 0
         
         # Verify required metadata
-        assert doc.metadata["source_path"] == str(IMAGES_PDF)
+        assert doc.metadata["source_path"] == str(COMPLEX_PDF)
         assert doc.metadata["doc_type"] == "pdf"
         assert "doc_hash" in doc.metadata
-        
-        # Note: Current implementation returns empty images list (stub)
-        # Full image extraction will be implemented later
-        if "images" in doc.metadata:
-            assert isinstance(doc.metadata["images"], list)
-    
-    def test_load_simple_pdf_without_image_extraction(self):
-        """Load PDF with image extraction disabled."""
-        loader = PdfLoader(extract_images=False)
-        doc = loader.load(SIMPLE_PDF)
-        
-        assert isinstance(doc, Document)
-        assert doc.metadata["doc_type"] == "pdf"
-        # Should not have images metadata when extraction is disabled
-        assert "images" not in doc.metadata or doc.metadata.get("images") == []
     
     def test_document_is_serializable(self):
         """Verify loaded Document can be serialized to dict/JSON."""
@@ -113,14 +98,7 @@ class TestPdfLoaderWithRealFiles:
         loader = PdfLoader()
         
         doc1 = loader.load(SIMPLE_PDF)
-        doc2 = loader.load(IMAGES_PDF)
+        doc2 = loader.load(COMPLEX_PDF)
         
         # Different files should produce different hashes
         assert doc1.metadata["doc_hash"] != doc2.metadata["doc_hash"]
-    
-    def test_custom_image_storage_dir(self):
-        """Verify custom image storage directory is respected."""
-        custom_dir = "custom/images"
-        loader = PdfLoader(extract_images=True, image_storage_dir=custom_dir)
-        
-        assert loader.image_storage_dir == Path(custom_dir)

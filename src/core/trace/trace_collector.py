@@ -1,7 +1,7 @@
 """Trace collector – receives finished TraceContext and persists them.
 
 The collector is the bridge between in-memory TraceContext objects and
-the on-disk JSON Lines log used by the Dashboard.  It is intentionally
+the on-disk JSON Lines trace log.  It is intentionally
 decoupled from the logging module so that trace persistence remains
 predictable and testable.
 """

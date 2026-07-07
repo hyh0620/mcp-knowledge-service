@@ -467,7 +467,7 @@ class BM25Indexer:
         Returns:
             BM25 score contribution
         """
-        # Avoid division by zero
+        # Avoid divide-by-zero.
         if avg_doc_length == 0:
             avg_doc_length = 1.0
         

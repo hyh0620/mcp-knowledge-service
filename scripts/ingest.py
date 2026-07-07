@@ -152,8 +152,6 @@ def print_summary(results: List[PipelineResult], verbose: bool = False) -> None:
     failed = total - successful
     
     total_chunks = sum(r.chunk_count for r in results if r.success)
-    total_images = sum(r.image_count for r in results if r.success)
-    
     print("\n" + "=" * 60)
     print("INGESTION SUMMARY")
     print("=" * 60)
@@ -161,7 +159,6 @@ def print_summary(results: List[PipelineResult], verbose: bool = False) -> None:
     print(f"  [OK] Successful: {successful}")
     print(f"  [FAIL] Failed: {failed}")
     print(f"\nTotal chunks generated: {total_chunks}")
-    print(f"Total images processed: {total_images}")
     
     if verbose and failed > 0:
         print("\nFailed files:")
@@ -196,19 +193,6 @@ def main() -> int:
     print("[*] MCP Knowledge Service Ingestion")
     print("=" * 60)
     
-    # Load configuration
-    try:
-        config_path = Path(args.config)
-        if not config_path.exists():
-            print(f"[FAIL] Configuration file not found: {config_path}")
-            return 2
-        
-        settings = load_settings(str(config_path))
-        print(f"[OK] Configuration loaded from: {config_path}")
-    except Exception as e:
-        print(f"[FAIL] Failed to load configuration: {e}")
-        return 2
-    
     # Discover files
     try:
         files = discover_files(args.path)
@@ -231,6 +215,19 @@ def main() -> int:
     if args.dry_run:
         print("\n[INFO] Dry run mode - no files were processed")
         return 0
+
+    # Load configuration only when files will actually be processed.
+    try:
+        config_path = Path(args.config)
+        if not config_path.exists():
+            print(f"[FAIL] Configuration file not found: {config_path}")
+            return 2
+
+        settings = load_settings(str(config_path))
+        print(f"[OK] Configuration loaded from: {config_path}")
+    except Exception as e:
+        print(f"[FAIL] Failed to load configuration: {e}")
+        return 2
     
     # Initialize pipeline
     print(f"\n[INFO] Initializing pipeline...")
@@ -269,7 +266,7 @@ def main() -> int:
                 if skipped:
                     print(f"   [SKIP] Skipped (already processed)")
                 else:
-                    print(f"   [OK] Success: {result.chunk_count} chunks, {result.image_count} images")
+                    print(f"   [OK] Success: {result.chunk_count} chunks")
             else:
                 print(f"   [FAIL] Failed: {result.error}")
         

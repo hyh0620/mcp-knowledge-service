@@ -146,15 +146,19 @@ class SparseEncoder:
         """
         tokens: List[str] = []
 
-        # Use jieba to segment the text (handles both Chinese and English)
+        # Preserve common English technical compounds before jieba splits them.
+        compound_pattern = re.compile(r"[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+)+")
+        compound_tokens = compound_pattern.findall(text)
+
+        # Use jieba to segment the text (handles both Chinese and English).
         raw_tokens = jieba.lcut(text)
 
-        # Clean tokens: keep only alphanumeric and Chinese characters
-        for token in raw_tokens:
+        # Clean tokens: keep only alphanumeric and Chinese characters.
+        for token in [*compound_tokens, *raw_tokens]:
             token = token.strip()
             if not token:
                 continue
-            # Skip pure punctuation / whitespace
+            # Skip pure punctuation / whitespace.
             if re.fullmatch(r'[\s\W]+', token, re.UNICODE):
                 continue
             tokens.append(token)

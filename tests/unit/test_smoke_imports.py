@@ -91,11 +91,6 @@ class TestSmokeImports:
         from src.libs import loader
         assert loader is not None
 
-    def test_import_libs_reranker(self) -> None:
-        """Test that the libs.reranker subpackage can be imported."""
-        from src.libs import reranker
-        assert reranker is not None
-
     def test_import_libs_splitter(self) -> None:
         """Test that the libs.splitter subpackage can be imported."""
         from src.libs import splitter
@@ -110,11 +105,6 @@ class TestSmokeImports:
         """Test that the observability package can be imported."""
         from src import observability
         assert observability is not None
-
-    def test_import_observability_dashboard(self) -> None:
-        """Test that the observability.dashboard subpackage can be imported."""
-        from src.observability import dashboard
-        assert dashboard is not None
 
     def test_import_observability_evaluation(self) -> None:
         """Test that the observability.evaluation subpackage can be imported."""

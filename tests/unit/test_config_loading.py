@@ -34,11 +34,6 @@ def test_load_settings_success(tmp_path: Path) -> None:
       sparse_top_k: 20
       fusion_top_k: 10
       rrf_k: 60
-    rerank:
-      enabled: false
-      provider: none
-      model: cross-encoder/ms-marco-MiniLM-L-6-v2
-      top_k: 5
     evaluation:
       enabled: false
       provider: custom
@@ -65,7 +60,6 @@ def test_load_settings_success(tmp_path: Path) -> None:
     assert settings.embedding.dimensions == 1536
     assert settings.vector_store.collection_name == "knowledge_hub"
     assert settings.retrieval.rrf_k == 60
-    assert settings.rerank.provider == "none"
     assert settings.evaluation.metrics == ["hit_rate", "mrr"]
     assert settings.observability.log_level == "INFO"
     assert settings.ingestion is not None
@@ -90,11 +84,6 @@ def test_missing_required_field_raises_error(tmp_path: Path) -> None:
       sparse_top_k: 20
       fusion_top_k: 10
       rrf_k: 60
-    rerank:
-      enabled: false
-      provider: none
-      model: cross-encoder/ms-marco-MiniLM-L-6-v2
-      top_k: 5
     evaluation:
       enabled: false
       provider: custom

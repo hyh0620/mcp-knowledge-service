@@ -202,48 +202,12 @@ class DocumentChunker:
             2
             >>> metadata["source_ref"]
             'doc_123'
-            >>> metadata["image_refs"]
-            ['img_001']
         """
-        import re
-        
         # Copy all document metadata (shallow copy is sufficient for primitives)
         chunk_metadata = document.metadata.copy()
-        
-        # Get document-level images for lookup
-        doc_images = document.metadata.get("images", [])
-        
-        # Remove document-level 'images' field - we'll add chunk-specific images below
-        chunk_metadata.pop("images", None)
-        
+
         # Add chunk-specific fields
         chunk_metadata["chunk_index"] = chunk_index
         chunk_metadata["source_ref"] = document.id
-        
-        # Extract image_refs from chunk text by finding [IMAGE: xxx] placeholders
-        image_refs = []
-        if chunk_text:
-            # Pattern matches [IMAGE: image_id] placeholders
-            pattern = r'\[IMAGE:\s*([^\]]+)\]'
-            matches = re.findall(pattern, chunk_text)
-            image_refs = [m.strip() for m in matches]
-        
-        chunk_metadata["image_refs"] = image_refs
-        
-        # Build chunk-specific 'images' list with full metadata for referenced images
-        # This is needed by ImageCaptioner to access image paths for Vision API calls
-        chunk_images = []
-        if image_refs and doc_images:
-            image_lookup = {img.get("id"): img for img in doc_images}
-            for img_id in image_refs:
-                if img_id in image_lookup:
-                    chunk_images.append(image_lookup[img_id])
-        
-        if chunk_images:
-            chunk_metadata["images"] = chunk_images
-        
-        # Try to determine page_num from the first referenced image
-        if chunk_images:
-            chunk_metadata["page_num"] = chunk_images[0].get("page")
-        
+
         return chunk_metadata

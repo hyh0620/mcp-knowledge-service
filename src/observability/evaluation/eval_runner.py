@@ -166,7 +166,6 @@ class EvalRunner:
         evaluator: Optional[BaseEvaluator] = None,
         answer_generator: Any = None,
         answer_overrides: Optional[Dict[int, str]] = None,
-        reranker: Any = None,
     ) -> None:
         """Initialize EvalRunner.
 
@@ -180,14 +179,12 @@ class EvalRunner:
             answer_overrides: Optional dict mapping test case index (0-based)
                 to a user-provided answer string. When present, the override
                 answer is used instead of auto-generation for that test case.
-            reranker: Optional CoreReranker instance for reranking results.
         """
         self.settings = settings
         self.hybrid_search = hybrid_search
         self.evaluator = evaluator
         self.answer_generator = answer_generator
         self.answer_overrides = answer_overrides or {}
-        self.reranker = reranker
 
     def run(
         self,
@@ -314,7 +311,7 @@ class EvalRunner:
         top_k: int,
         collection: Optional[str],
     ) -> List[Any]:
-        """Retrieve chunks using HybridSearch + optional Reranking.
+        """Retrieve chunks using HybridSearch.
 
         Falls back to an empty list if search is not configured.
         """
@@ -323,22 +320,11 @@ class EvalRunner:
             return []
 
         try:
-            # Retrieve more candidates if reranker is enabled
-            has_reranker = self.reranker is not None and getattr(self.reranker, 'is_enabled', False)
-            initial_top_k = top_k * 2 if has_reranker else top_k
-
             results = self.hybrid_search.search(
                 query=query,
-                top_k=initial_top_k,
+                top_k=top_k,
             )
-            results = results if isinstance(results, list) else results.results
-
-            # Apply reranking if enabled
-            if has_reranker and results:
-                rerank_result = self.reranker.rerank(query=query, results=results, top_k=top_k)
-                results = rerank_result.results
-
-            return results
+            return results if isinstance(results, list) else results.results
         except Exception as exc:
             logger.warning("Retrieval failed for '%s': %s", query[:40], exc)
             return []

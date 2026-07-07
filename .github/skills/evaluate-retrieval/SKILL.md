@@ -31,5 +31,4 @@ description: Evaluate retrieval quality for a specified collection with a golden
 ## Rules
 
 - Report numerator and denominator.
-- Do not claim Rerank or Ragas unless actually enabled and verified.
 - Do not use LLM subjective scoring as retrieval accuracy.

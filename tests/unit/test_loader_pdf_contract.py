@@ -22,7 +22,6 @@ from src.libs.loader.pdf_loader import PdfLoader
 # Test fixtures paths
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures" / "sample_documents"
 SIMPLE_PDF = FIXTURES_DIR / "simple.pdf"
-IMAGES_PDF = FIXTURES_DIR / "with_images.pdf"
 
 
 class TestBaseLoader:
@@ -60,17 +59,7 @@ class TestPdfLoaderInitialization:
     def test_default_initialization(self):
         """PdfLoader can be initialized with defaults."""
         loader = PdfLoader()
-        assert loader.extract_images is True
-        assert loader.image_storage_dir == Path("data/images")
-    
-    def test_custom_initialization(self):
-        """PdfLoader respects custom configuration."""
-        loader = PdfLoader(
-            extract_images=False,
-            image_storage_dir="custom/path"
-        )
-        assert loader.extract_images is False
-        assert loader.image_storage_dir == Path("custom/path")
+        assert loader._markitdown is not None
     
     def test_markitdown_available(self):
         """PdfLoader requires MarkItDown to be available."""
@@ -149,12 +138,6 @@ class TestPdfLoaderHelperMethods:
         title = loader._extract_title(text)
         assert title is None
     
-    def test_generate_image_id_format(self):
-        """_generate_image_id creates consistent ID format."""
-        image_id = PdfLoader._generate_image_id("abc123def456", 2, 0)
-        assert image_id == "abc123de_2_0"
-
-
 class TestPdfConversionCore:
     """Tests for core PDF conversion functionality using real PDF files."""
     
@@ -200,54 +183,6 @@ class TestPdfConversionCore:
         # Title should contain relevant keywords
         title_lower = doc.metadata["title"].lower()
         assert "sample" in title_lower or "document" in title_lower
-    
-    def test_pdf_with_images_structure(self):
-        """Verify PDF with images is processed correctly with image extraction."""
-        if not IMAGES_PDF.exists():
-            pytest.skip(f"Test fixture not found: {IMAGES_PDF}")
-        
-        loader = PdfLoader(extract_images=True)
-        doc = loader.load(IMAGES_PDF)
-        
-        # Verify basic structure
-        assert isinstance(doc, Document)
-        assert len(doc.text) > 0
-        
-        # Verify images were extracted
-        assert "images" in doc.metadata
-        assert isinstance(doc.metadata["images"], list)
-        
-        if len(doc.metadata["images"]) > 0:
-            # Verify image metadata structure
-            for img in doc.metadata["images"]:
-                assert "id" in img
-                assert "path" in img
-                assert "page" in img
-                assert "text_offset" in img
-                assert "text_length" in img
-                assert "position" in img
-                
-                # Verify image file exists
-                img_path = Path(img["path"])
-                assert img_path.exists(), f"Image file should exist: {img_path}"
-                
-                # Verify placeholder exists in text
-                placeholder = f"[IMAGE: {img['id']}]"
-                assert placeholder in doc.text, f"Placeholder {placeholder} should be in text"
-    
-    def test_image_extraction_disabled(self):
-        """Verify image extraction can be disabled."""
-        if not IMAGES_PDF.exists():
-            pytest.skip(f"Test fixture not found: {IMAGES_PDF}")
-        
-        loader = PdfLoader(extract_images=False)
-        doc = loader.load(IMAGES_PDF)
-        
-        # Should still extract text
-        assert len(doc.text) > 0
-        
-        # Should not have images metadata
-        assert "images" not in doc.metadata or doc.metadata.get("images") == []
     
     def test_document_hash_consistency(self):
         """Verify same PDF produces same document hash."""

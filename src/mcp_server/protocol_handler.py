@@ -236,7 +236,7 @@ def create_mcp_server(
         )
 
     # Register default tools if requested
-    if register_tools:
+    if register_tools and not protocol_handler.tools:
         _register_default_tools(protocol_handler)
 
     # Create low-level server

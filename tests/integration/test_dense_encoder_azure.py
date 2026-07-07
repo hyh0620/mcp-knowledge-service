@@ -12,10 +12,16 @@ Run only when validating Azure Embedding configuration.
 """
 
 import pytest
+import os
 from src.ingestion.embedding.dense_encoder import DenseEncoder
 from src.core.types import Chunk
 from src.core.settings import load_settings
 from src.libs.embedding.embedding_factory import EmbeddingFactory
+
+pytestmark = pytest.mark.skipif(
+    os.getenv("RUN_AZURE_EMBEDDING_E2E") != "1",
+    reason="real Azure embedding E2E is opt-in; default pytest must be offline",
+)
 
 
 @pytest.fixture(scope="module")

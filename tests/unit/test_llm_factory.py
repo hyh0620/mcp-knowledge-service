@@ -36,12 +36,6 @@ def create_test_config(provider="fake", **overrides):
             "fusion_top_k": 5,
             "rrf_k": 60,
         },
-        "rerank": {
-            "enabled": False,
-            "provider": "none",
-            "model": "test",
-            "top_k": 5,
-        },
         "evaluation": {
             "enabled": False,
             "provider": "custom",
@@ -170,7 +164,7 @@ class TestLLMFactory:
         config_text = "\n".join(
             line for line in config_text.split("\n")
             if "provider:" not in line or "embedding:" in line or "vector_store:" in line
-            or "rerank:" in line or "evaluation:" in line
+            or "evaluation:" in line
         )
         config_file.write_text(config_text)
         
