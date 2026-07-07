@@ -59,7 +59,9 @@ cp .env.example .env
 cp config/settings.example.yaml config/settings.yaml
 ```
 
-Fill local provider values in `.env` or shell environment. Do not commit `.env` or `config/settings.yaml`.
+Fill local provider values in `.env` or shell environment before real embedding or provider-backed ingestion. Do not commit `.env` or `config/settings.yaml`.
+
+真实执行 embedding 或 Provider 驱动的 ingestion 前，在本地 `.env` 或 shell 环境中填入私有 Key；不要提交这些配置。
 
 Start the MCP server:
 
@@ -191,10 +193,10 @@ Some real ingestion and provider tests require local provider configuration, API
 
 ## Documentation / 文档
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [Ingestion](docs/INGESTION.md)
-- [Integration](docs/INTEGRATION.md)
-- [Evaluation](docs/EVALUATION.md)
+- [Architecture / 系统架构](docs/ARCHITECTURE.md)
+- [Ingestion / 知识导入](docs/INGESTION.md)
+- [Integration / 接入指南](docs/INTEGRATION.md)
+- [Evaluation / 检索评估](docs/EVALUATION.md)
 
 ## Skills / 项目工作流
 
