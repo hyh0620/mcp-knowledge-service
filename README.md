@@ -63,13 +63,25 @@ Fill local provider values in `.env` or shell environment before real embedding 
 
 真实执行 embedding 或 Provider 驱动的 ingestion 前，在本地 `.env` 或 shell 环境中填入私有 Key；不要提交这些配置。
 
-Start the MCP server:
+MCP server entry point:
 
 ```bash
 python -m src.mcp_server.server
 ```
 
+`python -m src.mcp_server.server` starts an stdio JSON-RPC server, not an interactive CLI.
+
+For normal application use, let the MCP client launch it automatically.
+
+For standalone verification, start it through an MCP client or verification script that sends `initialize`, `tools/list`, and tool calls.
+
 The server uses stdio transport. Stdout is reserved for MCP protocol messages; logs are written to stderr.
+
+`python -m src.mcp_server.server` 启动的是 stdio JSON-RPC Server，不是可直接交互查询的 CLI。
+
+正常业务运行时，应由 MCP Client 自动拉起该进程。
+
+单独验证时，应通过 MCP Client 或验证脚本发送 `initialize`、`tools/list` 和 tool call，而不是只在终端直接运行该命令。
 
 ## Ingestion / 知识导入
 

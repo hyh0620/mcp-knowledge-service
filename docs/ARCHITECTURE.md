@@ -45,6 +45,18 @@ Entry point:
 python -m src.mcp_server.server
 ```
 
+`python -m src.mcp_server.server` starts an stdio JSON-RPC server, not an interactive CLI.
+
+For normal application use, let the MCP client launch it automatically.
+
+For standalone verification, start it through an MCP client or verification script that sends `initialize`, `tools/list`, and tool calls.
+
+`python -m src.mcp_server.server` 启动的是 stdio JSON-RPC Server，不是可直接交互查询的 CLI。
+
+正常业务运行时，应由 MCP Client 自动拉起该进程。
+
+单独验证时，应通过 MCP Client 或验证脚本发送 `initialize`、`tools/list` 和 tool call，而不是只在终端直接运行该命令。
+
 Tools:
 
 - `query_knowledge_hub`
