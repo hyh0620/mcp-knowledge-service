@@ -23,20 +23,13 @@ MCP Knowledge Service is a domain-neutral retrieval server exposed through the M
 
 ## Architecture / 系统架构
 
-```text
-Source documents
-  -> ingestion pipeline
-  -> chunks
-  -> embeddings + ChromaDB
-  -> BM25 index
-  -> collection
+![Architecture](./architecture.svg)
 
-MCP client
-  -> stdio JSON-RPC
-  -> query_knowledge_hub
-  -> Dense + BM25 + RRF
-  -> cited results
-```
+- Ingestion: converts PDF / Markdown into vector and BM25 retrieval data under a selected collection.
+- MCP Serving: an MCP Client calls tools exposed by the MCP Server through stdio.
+- Query: `query_knowledge_hub` uses Dense Retrieval, BM25, and RRF to return Retrieved Answer with Citations.
+
+中文说明：导入阶段把 PDF / Markdown 转换为 collection 下的向量和 BM25 检索数据；在线阶段由 MCP Client 通过 stdio 调用 MCP Server 暴露的 tools；`query_knowledge_hub` 使用 Dense Retrieval、BM25 和 RRF 返回 citations。
 
 ## Collection Isolation / Collection 隔离
 

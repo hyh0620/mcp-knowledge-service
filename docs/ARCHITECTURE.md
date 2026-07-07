@@ -1,84 +1,118 @@
 # Architecture / 系统架构
 
-MCP Knowledge Service is a domain-neutral retrieval service exposed through MCP stdio.
+MCP Knowledge Service is an MCP Server for domain-specific document ingestion and cited Hybrid Retrieval.
 
-MCP Knowledge Service 是通过 MCP stdio 暴露的通用知识检索服务。
+MCP Knowledge Service 是用于领域文档导入和带引用混合检索的 MCP Server。
 
-## Ingestion Flow / 知识导入流程
+![Architecture](../architecture.svg)
+
+## Knowledge Preparation / 知识准备
+
+Knowledge preparation is the offline path. It converts source documents into collection-scoped retrieval data.
+
+知识准备是离线路径，把源文档转换为指定 collection 下的检索数据。
+
+Source documents can be Markdown or PDF. `salon_knowledge` is only an example collection used by `examples/salon/`, not the default service domain.
+
+知识源可以是 Markdown 或 PDF。`salon_knowledge` 只是 `examples/salon/` 使用的示例 collection，不是服务默认业务领域。
+
+## Ingestion Pipeline / 导入流程
 
 ```text
 source documents
   -> loader
   -> text extraction
+  -> normalization
   -> chunking
-  -> embeddings
-  -> ChromaDB
-  -> BM25
-  -> collection
 ```
 
-The ingestion path converts PDF / Markdown source documents into chunks, stores embeddings in ChromaDB, and builds BM25 documents for sparse retrieval.
+The pipeline prepares clean text chunks before retrieval indexes are built.
 
-导入流程把 PDF / Markdown 知识源转换为 chunks，写入 ChromaDB 向量库，并构建 BM25 文档用于关键词检索。
+导入流程先把文档转换为可检索的文本 chunks。
 
-## Query Flow / 查询流程
+## Retrieval Storage / 检索存储
 
-```text
-MCP client
-  -> stdio JSON-RPC
-  -> query_knowledge_hub
-  -> Dense Retrieval
-  -> BM25
-  -> RRF
-  -> citations
-```
+Chunks are stored in two retrieval paths:
 
-The service combines Dense Retrieval and BM25 results with RRF, then returns cited results to the MCP client.
+- embeddings -> ChromaDB Vector Store
+- chunk terms -> BM25 Index
 
-服务使用 RRF 融合 Dense Retrieval 与 BM25 结果，并向 MCP Client 返回带 citations 的检索结果。
+chunks 同时进入向量检索和 BM25 关键词检索路径。
 
-## MCP Server / MCP 服务
+Runtime ChromaDB data, BM25 indexes, SQLite files, logs, and traces stay local and are not committed to Git.
 
-Entry point:
+ChromaDB、BM25 index、SQLite、日志和 trace 等运行时数据保留在本地，不提交到 Git。
+
+## MCP Serving Layer / MCP 服务层
+
+The online serving path is an MCP stdio JSON-RPC server process.
+
+在线查询路径是 MCP stdio JSON-RPC server 进程。
 
 ```bash
 python -m src.mcp_server.server
 ```
 
-`python -m src.mcp_server.server` starts an stdio JSON-RPC server, not an interactive CLI.
+`python -m src.mcp_server.server` starts an stdio JSON-RPC server, not an interactive CLI. For normal application use, let the MCP client launch it automatically.
 
-For normal application use, let the MCP client launch it automatically.
+`python -m src.mcp_server.server` 启动的是 stdio JSON-RPC Server，不是可直接交互查询的 CLI；正常业务运行时应由 MCP Client 自动拉起。
 
-For standalone verification, start it through an MCP client or verification script that sends `initialize`, `tools/list`, and tool calls.
-
-`python -m src.mcp_server.server` 启动的是 stdio JSON-RPC Server，不是可直接交互查询的 CLI。
-
-正常业务运行时，应由 MCP Client 自动拉起该进程。
-
-单独验证时，应通过 MCP Client 或验证脚本发送 `initialize`、`tools/list` 和 tool call，而不是只在终端直接运行该命令。
-
-Tools:
+The service exposes knowledge retrieval tools:
 
 - `query_knowledge_hub`
 - `list_collections`
 - `get_document_summary`
 
-Stdout is reserved for MCP JSON-RPC protocol messages. Logs must go to stderr.
+该服务暴露的是知识检索 tools。
 
-stdout 只承载 MCP JSON-RPC 协议消息；日志写入 stderr。
+`stdout` is reserved for MCP JSON-RPC protocol messages. Logs are written to `stderr`.
+
+`stdout` 只承载 MCP JSON-RPC 协议消息；日志写入 `stderr`。
+
+## Query Execution / 查询执行
+
+```text
+Consumer Application / MCP Client
+  -> stdio JSON-RPC
+  -> MCP Knowledge Service (MCP Server)
+  -> query_knowledge_hub
+  -> Dense Retrieval + BM25 Retrieval
+  -> RRF Fusion
+```
+
+`query_knowledge_hub` runs Dense Retrieval and BM25 Retrieval, then fuses ranked results with RRF.
+
+`query_knowledge_hub` 执行 Dense Retrieval 与 BM25 Retrieval，并通过 RRF 融合排序结果。
 
 ## Collection Isolation / Collection 隔离
 
-Collections isolate data between business domains. The service default is `knowledge_hub`, while examples can use explicit collections such as `salon_knowledge`.
+Collections isolate domain-specific knowledge. Examples:
 
-collection 是业务知识隔离单位。服务默认 collection 是 `knowledge_hub`，示例可以显式使用 `salon_knowledge`。
+- `knowledge_hub`
+- `salon_knowledge` (example)
+
+collection 是业务知识隔离单位。`salon_knowledge` 是示例 collection，不是默认业务域。
 
 Collection names should come from CLI arguments, MCP tool input, environment variables, or config.
 
-collection 名称应来自 CLI 参数、MCP tool 输入、环境变量或配置，不应在核心服务代码中写死具体业务。
+collection 名称应来自 CLI 参数、MCP tool 输入、环境变量或配置。
 
-## Runtime Data / 运行时数据
+## Output and Citations / 输出与引用
 
-Runtime data is written under local storage such as `data/` and `logs/`. These directories must not be committed.
+The serving layer returns Retrieved Answer with Citations.
 
-ChromaDB、BM25、SQLite、日志和 trace 等运行时数据不提交到 Git。
+服务层返回 Retrieved Answer with Citations，即检索结果和来源引用。
+
+Callers should preserve citations and display them when useful to users.
+
+调用方应保留 citations，并在适合的用户界面中展示来源。
+
+## Runtime Boundaries / 运行时边界
+
+This public service does not claim authentication, authorization, tenant isolation, production security controls, or production deployment.
+
+当前公开范围不声明认证、授权、租户隔离、生产级安全控制或生产部署。
+
+It does not claim Rerank, Ragas, Vision, multimodal processing, Graph RAG, or Memory.
+
+当前公开范围不声明 Rerank、Ragas、Vision、多模态、Graph RAG 或 Memory。
