@@ -1,25 +1,27 @@
 # MCP Knowledge Service
 
-MCP Knowledge Service is a reusable knowledge retrieval server exposed through the Model Context Protocol. It provides ingestion, collection-based isolation, Hybrid Retrieval, and cited results for business applications that need private knowledge access.
+Reusable MCP-based knowledge retrieval service for domain-specific document ingestion and cited hybrid retrieval.
 
-The service is domain-neutral. Salon knowledge is included only as an example under `examples/salon/`.
+可复用的 MCP 知识检索服务，通过 collection 隔离不同业务知识库，提供文档导入、混合检索和来源引用。
 
-## Core Capabilities
+## Overview / 项目概述
 
-- MCP stdio server using the official MCP Python SDK.
-- Tools:
-  - `query_knowledge_hub`
-  - `list_collections`
-  - `get_document_summary`
-- Ingestion pipeline for source documents.
-- Dense Retrieval with ChromaDB.
-- BM25 sparse retrieval.
-- RRF Fusion.
-- Source citations.
-- Collection-based isolation for multiple business domains.
-- OpenAI-compatible provider configuration, including Qwen compatible mode.
+MCP Knowledge Service is a domain-neutral retrieval server exposed through the Model Context Protocol. It ingests documents into named collections, builds Dense Retrieval and BM25 indexes, fuses results with RRF, and returns cited search results to MCP clients.
 
-## Architecture
+该服务不绑定具体业务。`examples/salon/` 只是一个可运行的示例，用于展示业务项目如何通过 collection 接入自己的知识库。
+
+## Core Capabilities / 核心能力
+
+| Capability | English | 中文说明 |
+| --- | --- | --- |
+| MCP stdio server | Uses the official MCP Python SDK and stdio JSON-RPC transport. | 通过标准 MCP stdio transport 暴露工具，便于被业务系统作为独立进程调用。 |
+| Ingestion | Imports PDF / Markdown knowledge sources into a selected collection. | 支持把指定知识源导入到指定 collection，不把业务域写死在服务代码中。 |
+| Collection isolation | Collections are selected through CLI arguments, MCP tool input, environment, or config. | 不同业务知识库通过 collection 隔离，例如 `knowledge_hub`、`salon_knowledge`。 |
+| Hybrid Retrieval | Combines ChromaDB Dense Retrieval, BM25, and RRF Fusion. | 同时利用向量检索和关键词检索，再通过 RRF 融合排序。 |
+| Citations | Returns source metadata for cited answers. | 检索结果带来源信息，方便上层应用展示引用。 |
+| OpenAI-compatible provider | Supports Qwen-compatible OpenAI API configuration. | 可通过 OpenAI-compatible 配置接入 Qwen embedding 或其他兼容 Provider。 |
+
+## Architecture / 系统架构
 
 ```text
 Source documents
@@ -36,9 +38,9 @@ MCP client
   -> cited results
 ```
 
-## Collection Isolation
+## Collection Isolation / Collection 隔离
 
-Collection names isolate business knowledge. Examples:
+Collection names isolate domain-specific knowledge retrieval. Examples:
 
 - `knowledge_hub`
 - `salon_knowledge`
@@ -47,7 +49,7 @@ Collection names isolate business knowledge. Examples:
 
 Collection names must be passed through CLI arguments, MCP tool arguments, environment variables, or config. Service code should not hardcode a business-specific collection.
 
-## Setup
+## Quick Start / 快速启动
 
 ```bash
 python3.11 -m venv .venv
@@ -57,9 +59,19 @@ cp .env.example .env
 cp config/settings.example.yaml config/settings.yaml
 ```
 
-Fill local provider values in `.env`. Do not commit `.env` or `config/settings.yaml`.
+Fill local provider values in `.env` or shell environment. Do not commit `.env` or `config/settings.yaml`.
 
-## Ingest Documents
+Start the MCP server:
+
+```bash
+python -m src.mcp_server.server
+```
+
+The server uses stdio transport. Stdout is reserved for MCP protocol messages; logs are written to stderr.
+
+## Ingestion / 知识导入
+
+Ingest documents into a selected collection:
 
 ```bash
 python scripts/ingest.py \
@@ -77,23 +89,25 @@ python scripts/ingest.py \
   --dry-run
 ```
 
-## Start MCP Server
+Real ingestion requires provider configuration for embeddings and writable runtime storage. Do not commit runtime ChromaDB, BM25, SQLite, logs, traces, or local reports.
 
-```bash
-python -m src.mcp_server.server
-```
+## MCP Tools / MCP 工具
 
-The server uses stdio transport. Stdout is reserved for MCP protocol messages; logs are written to stderr.
-
-## Verify Tools
-
-Use an MCP client to initialize the server and call `tools/list`. Expected tools:
+Expected tools from `tools/list`:
 
 - `query_knowledge_hub`
 - `list_collections`
 - `get_document_summary`
 
-## Query
+MCP tool input for `query_knowledge_hub`:
+
+```json
+{
+  "query": "What is this collection about?",
+  "top_k": 4,
+  "collection": "knowledge_hub"
+}
+```
 
 CLI query:
 
@@ -104,17 +118,19 @@ python scripts/query.py \
   --top-k 4
 ```
 
-MCP tool input:
+## Verified Public Scope / 已验证公开范围
 
-```json
-{
-  "query": "What is this collection about?",
-  "top_k": 4,
-  "collection": "knowledge_hub"
-}
-```
+- MCP initialize
+- `tools/list`
+- `query_knowledge_hub`
+- citations
+- salon example ingestion: 7 PDFs, 24 chunks, 24 vectors, 24 BM25 documents
+- `smoke_test_collection` proves collection is not hardcoded
+- runtime data is intentionally excluded from Git
 
-## Salon Example
+The salon example verification is an integration check, not a general retrieval-quality benchmark.
+
+## Example Integration / 示例集成
 
 The `examples/salon/` directory contains a complete example used by AI Hair Salon Agent:
 
@@ -125,19 +141,62 @@ The `examples/salon/` directory contains a complete example used by AI Hair Salo
 
 It is an integration example, not the default domain of this repository.
 
-## Tests
+## Related Repository / 关联项目
+
+AI Hair Salon Agent: <https://github.com/hyh0620/ai-hair-salon-agent>
+
+AI Hair Salon Agent is a reference consumer that calls this service through an MCP client with `collection=salon_knowledge`.
+
+AI Hair Salon Agent 是该服务的参考消费者，通过 MCP Client 调用 `salon_knowledge` collection。
+
+## Verification / 验证方式
+
+Static dependency check:
 
 ```bash
 .venv/bin/python -m pip check
 ```
 
-Additional unit/integration tests may require local provider credentials or generated runtime data. Keep runtime data out of git.
+Unit and integration tests:
 
-## Known Limits
+```bash
+pytest
+```
 
-- Runtime ChromaDB, BM25, SQLite, logs, and traces are not committed.
+Real MCP verification:
 
-## Skills
+```text
+initialize -> tools/list -> query_knowledge_hub
+```
+
+Real ingestion verification:
+
+```bash
+python scripts/ingest.py \
+  --path <SOURCE_PATH> \
+  --collection <COLLECTION_NAME> \
+  --force
+```
+
+Some real ingestion and provider tests require local provider configuration, API credentials, and runtime storage. Keep those local files out of Git.
+
+## Known Limits / 当前限制
+
+| Limit | 中文说明 |
+| --- | --- |
+| No authentication or authorization layer is claimed. | 当前公开范围不声明认证、授权或企业级租户安全控制。 |
+| No Dashboard, Rerank, Ragas, multimodal, or Vision claim. | 未验证高级模块不作为公开能力。 |
+| Runtime ChromaDB, BM25, SQLite, logs, and traces are not committed. | 运行时数据不进入 Git，复现时需本地重新导入。 |
+| The salon example is not the default business domain. | 根服务是通用知识检索服务，理发店只是示例集成。 |
+
+## Documentation / 文档
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Ingestion](docs/INGESTION.md)
+- [Integration](docs/INTEGRATION.md)
+- [Evaluation](docs/EVALUATION.md)
+
+## Skills / 项目工作流
 
 Operational skills are under `.github/skills/`:
 
@@ -148,3 +207,7 @@ Operational skills are under `.github/skills/`:
 - `package-clean`
 
 They describe repeatable operational workflows and do not contain credentials.
+
+## Security / 安全说明
+
+Do not commit `.env`, API keys, `config/settings.yaml`, local runtime databases, ChromaDB files, BM25 indexes, logs, trace files, or raw local evaluation dumps.
