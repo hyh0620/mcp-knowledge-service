@@ -106,8 +106,9 @@
   <text class="tiny" x="692" y="722">get_document_summary</text>
 
   <rect class="tool" x="995" y="590" width="220" height="105" rx="12"/>
-  <text class="node-title" x="1028" y="625">query_knowledge_hub</text>
-  <text class="small" x="1048" y="652">Tool Call / 工具调用</text>
+  <text class="node-title" x="1067" y="618">查询工具</text>
+  <text class="small" x="1027" y="645">query_knowledge_hub</text>
+  <text class="tiny" x="1043" y="671">Tool Call / 工具调用</text>
 
   <rect class="tool" x="1265" y="535" width="220" height="95" rx="12"/>
   <text class="node-title" x="1300" y="570">Dense + BM25</text>
