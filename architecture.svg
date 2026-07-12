@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="auto" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
-  <title id="title">MCP Knowledge Service architecture</title>
-  <desc id="desc">Two-stage architecture diagram. The top section shows offline knowledge preparation from PDF and Markdown through ingestion, chunking, embeddings, ChromaDB, BM25, and named collections. The bottom section shows MCP query serving through stdio JSON-RPC, MCP tools, hybrid retrieval, RRF fusion, and cited results.</desc>
+  <title id="title">MCP Knowledge Service 系统架构</title>
+  <desc id="desc">两阶段架构图。上半部分展示从 Markdown 维护源和 PDF 输入到文档导入、文本切分、向量嵌入、ChromaDB、BM25 与命名知识集合的离线准备；下半部分展示通过 stdio JSON-RPC、MCP tools、混合检索、RRF 和来源引用完成的在线查询。</desc>
   <defs>
     <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
       <path d="M2,2 L10,6 L2,10 Z" fill="#334155"/>
@@ -38,47 +38,47 @@
 
   <rect class="page" x="0" y="0" width="1600" height="900"/>
   <text class="title" x="60" y="60">MCP Knowledge Service</text>
-  <text class="subtitle" x="60" y="88">MCP Server for collection-based ingestion and cited Hybrid Retrieval</text>
+  <text class="subtitle" x="60" y="88">基于 collection 的文档导入、混合检索与来源引用</text>
 
   <rect class="prep-lane" x="55" y="125" width="1490" height="315" rx="18"/>
-  <text class="lane-title" x="85" y="165">Knowledge Preparation / 离线知识准备</text>
+  <text class="lane-title" x="85" y="165">离线知识准备 / Knowledge Preparation</text>
 
   <rect class="serve-lane" x="55" y="485" width="1490" height="325" rx="18"/>
-  <text class="lane-title" x="85" y="525">MCP Query Serving / 在线 MCP 查询服务</text>
+  <text class="lane-title" x="85" y="525">在线 MCP 查询服务 / Query Serving</text>
 
   <rect class="doc" x="95" y="230" width="210" height="105" rx="12"/>
-  <text class="node-title" x="130" y="265">Source Documents</text>
-  <text class="small" x="153" y="293">Markdown · PDF</text>
+  <text class="node-title" x="143" y="265">知识源文件</text>
+  <text class="small" x="128" y="293">Markdown 源 · PDF 输入</text>
 
   <rect class="pipeline" x="365" y="220" width="230" height="125" rx="12"/>
-  <text class="node-title" x="402" y="255">Ingestion Pipeline</text>
-  <text class="small" x="418" y="283">load · extract</text>
-  <text class="small" x="438" y="309">normalize</text>
+  <text class="node-title" x="422" y="255">文档导入</text>
+  <text class="small" x="414" y="283">PDF load · extract</text>
+  <text class="small" x="420" y="309">normalize / 标准化</text>
 
   <rect class="pipeline" x="660" y="230" width="190" height="105" rx="12"/>
-  <text class="node-title" x="705" y="265">Chunking</text>
-  <text class="node-cn" x="715" y="293">语义分块</text>
+  <text class="node-title" x="716" y="265">文本切分</text>
+  <text class="node-cn" x="720" y="293">Chunking</text>
 
   <rect class="store" x="930" y="170" width="230" height="95" rx="12"/>
-  <text class="node-title" x="983" y="205">Embeddings</text>
-  <text class="small" x="980" y="233">vector encoding</text>
+  <text class="node-title" x="1005" y="205">向量嵌入</text>
+  <text class="small" x="1010" y="233">Embedding</text>
 
   <rect class="store" x="930" y="300" width="230" height="95" rx="12"/>
-  <text class="node-title" x="980" y="335">BM25 Index</text>
-  <text class="small" x="978" y="363">sparse retrieval</text>
+  <text class="node-title" x="979" y="335">BM25 关键词索引</text>
+  <text class="small" x="1000" y="363">Sparse Retrieval</text>
 
   <rect class="store" x="1225" y="165" width="245" height="115" rx="12"/>
-  <text class="node-title" x="1260" y="200">ChromaDB Vector Store</text>
-  <text class="small" x="1300" y="229">dense index</text>
+  <text class="node-title" x="1273" y="200">ChromaDB 向量库</text>
+  <text class="small" x="1300" y="229">Dense Retrieval</text>
 
   <rect class="result" x="1225" y="315" width="245" height="105" rx="12"/>
-  <text class="node-title" x="1262" y="348">Named Collections</text>
+  <text class="node-title" x="1286" y="348">命名知识集合</text>
   <text class="small" x="1290" y="374">knowledge_hub</text>
   <text class="small" x="1265" y="398">salon_knowledge (example)</text>
 
   <rect class="note" x="1055" y="405" width="380" height="52" rx="10"/>
-  <text class="tiny" x="1082" y="425">collection isolation · runtime indexes stay local</text>
-  <text class="tiny" x="1082" y="443">collection 用于隔离；运行时索引不提交 Git</text>
+  <text class="tiny" x="1082" y="425">collection 隔离不同领域的检索数据</text>
+  <text class="tiny" x="1082" y="443">runtime indexes 保留本地，不提交 Git</text>
 
   <path class="arrow" d="M305 282 L365 282"/>
   <path class="arrow" d="M595 282 L660 282"/>
@@ -89,37 +89,37 @@
   <path class="arrow" d="M1348 280 L1348 315"/>
 
   <rect class="client" x="95" y="610" width="210" height="105" rx="12"/>
-  <text class="node-title" x="125" y="645">Consumer Application</text>
-  <text class="small" x="160" y="673">MCP Client</text>
+  <text class="node-title" x="151" y="645">业务应用</text>
+  <text class="small" x="139" y="673">MCP Client / 客户端</text>
 
   <rect class="tool" x="365" y="610" width="190" height="105" rx="12"/>
   <text class="node-title" x="403" y="645">stdio JSON-RPC</text>
-  <text class="tiny" x="402" y="672">stdout: MCP protocol</text>
-  <text class="tiny" x="421" y="692">stderr: logs</text>
+  <text class="tiny" x="399" y="672">stdout: MCP 协议</text>
+  <text class="tiny" x="417" y="692">stderr: 日志</text>
 
   <rect class="server" x="625" y="565" width="300" height="190" rx="12"/>
-  <text class="node-title" x="662" y="600">MCP Knowledge Service</text>
-  <text class="node-cn" x="721" y="626">MCP Server</text>
-  <text class="small" x="696" y="654">tools exposed:</text>
+  <text class="node-title" x="704" y="600">MCP 知识服务</text>
+  <text class="node-cn" x="700" y="626">MCP Server / 服务端</text>
+  <text class="small" x="694" y="654">暴露 MCP Tools:</text>
   <text class="tiny" x="683" y="680">query_knowledge_hub</text>
   <text class="tiny" x="708" y="701">list_collections</text>
   <text class="tiny" x="692" y="722">get_document_summary</text>
 
   <rect class="tool" x="995" y="590" width="220" height="105" rx="12"/>
   <text class="node-title" x="1028" y="625">query_knowledge_hub</text>
-  <text class="small" x="1066" y="652">tool call</text>
+  <text class="small" x="1048" y="652">Tool Call / 工具调用</text>
 
   <rect class="tool" x="1265" y="535" width="220" height="95" rx="12"/>
   <text class="node-title" x="1300" y="570">Dense + BM25</text>
-  <text class="small" x="1324" y="598">retrieval</text>
+  <text class="small" x="1322" y="598">混合检索</text>
 
   <rect class="tool" x="1265" y="680" width="220" height="82" rx="12"/>
-  <text class="node-title" x="1322" y="713">RRF Fusion</text>
-  <text class="small" x="1310" y="740">ranked context</text>
+  <text class="node-title" x="1312" y="713">RRF 排名融合</text>
+  <text class="small" x="1310" y="740">ranked context / 排序</text>
 
   <rect class="result" x="1050" y="790" width="340" height="82" rx="12"/>
-  <text class="node-title" x="1090" y="822">Retrieved Answer with Citations</text>
-  <text class="node-cn" x="1135" y="848">检索结果（含引用）</text>
+  <text class="node-title" x="1112" y="822">带来源引用的检索结果</text>
+  <text class="node-cn" x="1138" y="848">Retrieved Result · Citations</text>
 
   <path class="arrow-orange" d="M305 662 L365 662"/>
   <path class="arrow-orange" d="M555 662 L625 662"/>
