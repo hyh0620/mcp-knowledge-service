@@ -317,9 +317,10 @@ class BM25Indexer:
     ) -> None:
         """Incrementally add documents to the BM25 index.
 
-        Loads the existing index (if any), optionally removes old postings
-        for the given *doc_id* (to support re-ingestion), merges the new
-        term stats, recomputes IDF scores, and saves.
+        Loads the existing index (if any), removes old postings matching the
+        incoming vector IDs or their stable source prefix, merges the new term
+        stats, recomputes IDF scores, and saves. ``doc_id`` prefix removal is
+        retained for callers using document-prefixed chunk IDs.
 
         Args:
             term_stats: New term statistics from SparseEncoder.encode().
@@ -338,15 +339,27 @@ class BM25Indexer:
         if not self._index:
             self.load(collection)
 
-        # Remove stale postings for this document (re-ingest case)
-        if doc_id and self._index:
-            self.remove_document(doc_id, collection)
-
         # Reconstruct existing term_stats from current index postings
         existing_stats: Dict[str, Dict[str, Any]] = {}  # chunk_id -> stat
+        incoming_chunk_ids = {stat["chunk_id"] for stat in term_stats}
+        incoming_source_prefixes = {
+            f"{parts[0]}_"
+            for chunk_id in incoming_chunk_ids
+            if len(parts := chunk_id.split("_")) == 3
+            and len(parts[0]) == 8
+            and len(parts[2]) == 8
+            and parts[1].isdigit()
+            and all(char in "0123456789abcdef" for char in parts[0] + parts[2])
+        }
         for term, term_data in self._index.items():
             for posting in term_data["postings"]:
                 cid = posting["chunk_id"]
+                if cid in incoming_chunk_ids:
+                    continue
+                if doc_id and cid.startswith(doc_id):
+                    continue
+                if any(cid.startswith(prefix) for prefix in incoming_source_prefixes):
+                    continue
                 if cid not in existing_stats:
                     existing_stats[cid] = {
                         "chunk_id": cid,

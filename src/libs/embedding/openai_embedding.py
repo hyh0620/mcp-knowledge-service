@@ -10,6 +10,7 @@ import os
 from typing import Any, List, Optional
 
 from src.libs.embedding.base_embedding import BaseEmbedding
+from src.libs.http_client import create_httpx_client
 
 
 class OpenAIEmbeddingError(RuntimeError):
@@ -145,8 +146,6 @@ class OpenAIEmbedding(BaseEmbedding):
             client_kwargs["default_query"] = {"api-version": self.api_version}
             client_kwargs["default_headers"] = {"api-key": self.api_key}
         
-        client = OpenAI(**client_kwargs)
-        
         # Prepare API call parameters
         api_params = {
             "input": texts,
@@ -161,7 +160,9 @@ class OpenAIEmbedding(BaseEmbedding):
         
         # Call OpenAI API
         try:
-            response = client.embeddings.create(**api_params)
+            with create_httpx_client() as http_client:
+                client = OpenAI(http_client=http_client, **client_kwargs)
+                response = client.embeddings.create(**api_params)
         except Exception as e:
             raise OpenAIEmbeddingError(
                 f"OpenAI Embeddings API call failed: {e}"

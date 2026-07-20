@@ -341,7 +341,45 @@ class TestIndexPersistence:
 
 class TestRebuildFunctionality:
     """Test rebuild and update scenarios."""
-    
+
+    def test_add_documents_replaces_vector_chunks_when_doc_id_differs(self, tmp_path):
+        """Re-ingestion replaces vector IDs even when doc_id uses another scheme."""
+        indexer = BM25Indexer(index_dir=str(tmp_path))
+        initial_stats = [
+            {
+                "chunk_id": "1234abcd_0000_aaaaaaaa",
+                "term_frequencies": {"old": 1},
+                "doc_length": 1,
+            },
+            {
+                "chunk_id": "1234abcd_0001_bbbbbbbb",
+                "term_frequencies": {"shared": 1},
+                "doc_length": 1,
+            },
+        ]
+        replacement_stats = [
+            {
+                "chunk_id": "1234abcd_0000_cccccccc",
+                "term_frequencies": {"new": 1},
+                "doc_length": 1,
+            },
+            {
+                "chunk_id": "1234abcd_0001_bbbbbbbb",
+                "term_frequencies": {"shared": 1},
+                "doc_length": 1,
+            },
+        ]
+
+        indexer.add_documents(initial_stats, collection="test", doc_id="doc_initial")
+        indexer.add_documents(replacement_stats, collection="test", doc_id="doc_updated")
+
+        assert indexer._metadata["num_docs"] == 2
+        assert indexer.query(["old"], top_k=10) == []
+        assert [item["chunk_id"] for item in indexer.query(["new"], top_k=10)] == [
+            "1234abcd_0000_cccccccc"
+        ]
+        assert len(indexer._index["shared"]["postings"]) == 1
+
     def test_rebuild_replaces_old_index(self, tmp_path):
         """Test that rebuild completely replaces old index."""
         indexer = BM25Indexer(index_dir=str(tmp_path))
