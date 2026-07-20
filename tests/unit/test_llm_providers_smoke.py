@@ -209,6 +209,15 @@ class TestOpenAILLM:
         settings = MockSettings()
         llm = OpenAILLM(settings, api_key="test-key", base_url="https://custom.api.com")
         assert llm.base_url == "https://custom.api.com"
+
+    def test_base_url_from_settings(self):
+        """Should use an OpenAI-compatible base URL from settings."""
+        settings = MockSettings()
+        settings.llm.base_url = "https://compatible.api.example/v1"
+
+        llm = OpenAILLM(settings, api_key="test-key")
+
+        assert llm.base_url == "https://compatible.api.example/v1"
     
     def test_chat_success(self):
         """Should return ChatResponse on successful API call."""

@@ -10,11 +10,19 @@ from __future__ import annotations
 import os
 from typing import Any, Dict, List, Optional
 
+from src.libs.http_client import create_httpx_client
 from src.libs.llm.base_llm import BaseLLM, ChatResponse, Message
 
 
 class OpenAILLMError(RuntimeError):
     """Raised when OpenAI API call fails."""
+
+
+def _optional_str(value: Any) -> Optional[str]:
+    """Return a stripped string value, ignoring unset Mock-like attributes."""
+    if isinstance(value, str) and value.strip():
+        return value
+    return None
 
 
 class OpenAILLM(BaseLLM):
@@ -78,8 +86,8 @@ class OpenAILLM(BaseLLM):
             )
         
         # Azure-compatible mode detection
-        azure_endpoint = getattr(settings.llm, 'azure_endpoint', None)
-        self.api_version = getattr(settings.llm, 'api_version', None)
+        azure_endpoint = _optional_str(getattr(settings.llm, 'azure_endpoint', None))
+        self.api_version = _optional_str(getattr(settings.llm, 'api_version', None))
         
         if base_url:
             self.base_url = base_url
@@ -92,7 +100,10 @@ class OpenAILLM(BaseLLM):
             if not self.api_version:
                 self.api_version = "2024-02-15-preview"
         else:
-            self.base_url = self.DEFAULT_BASE_URL
+            self.base_url = (
+                _optional_str(getattr(settings.llm, 'base_url', None))
+                or self.DEFAULT_BASE_URL
+            )
             self._use_azure_auth = False
         
         # Store any additional kwargs for future use
@@ -204,9 +215,9 @@ class OpenAILLM(BaseLLM):
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
-        
+
         try:
-            with httpx.Client(timeout=60.0) as client:
+            with create_httpx_client(timeout=60.0) as client:
                 response = client.post(url, json=payload, headers=headers)
                 
                 if response.status_code != 200:
