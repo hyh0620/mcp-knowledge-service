@@ -1,0 +1,8 @@
+{"id":"R001","category":"salon_retrieval","query":"染发前需要做哪些准备？","collection":"salon_knowledge","expected_chunk_ids":[],"expected_sources":["hair_coloring_care.pdf"],"notes":"染发前准备。"}
+{"id":"R002","category":"salon_retrieval","query":"染发后怎么护理才能减少掉色？","collection":"salon_knowledge","expected_chunk_ids":[],"expected_sources":["hair_coloring_care.pdf"],"notes":"染发后护理。"}
+{"id":"R003","category":"salon_retrieval","query":"烫发后多久可以洗头？","collection":"salon_knowledge","expected_chunk_ids":[],"expected_sources":["perm_and_scalp_care.pdf"],"notes":"烫发后洗头时间。"}
+{"id":"R004","category":"salon_retrieval","query":"头皮护理适合什么情况？","collection":"salon_knowledge","expected_chunk_ids":[],"expected_sources":["perm_and_scalp_care.pdf"],"notes":"头皮护理说明。"}
+{"id":"R005","category":"salon_retrieval","query":"门店几点营业，地址在哪里？","collection":"salon_knowledge","expected_chunk_ids":[],"expected_sources":["store_information.pdf"],"notes":"营业时间与地址。"}
+{"id":"R006","category":"salon_retrieval","query":"取消预约最晚提前多久？","collection":"salon_knowledge","expected_chunk_ids":[],"expected_sources":["booking_and_cancellation_policy.pdf"],"notes":"取消政策。"}
+{"id":"R007","category":"salon_retrieval","query":"会员和售后规则是什么？","collection":"salon_knowledge","expected_chunk_ids":[],"expected_sources":["membership_and_after_sales.pdf"],"notes":"会员与售后。"}
+{"id":"R008","category":"salon_retrieval","query":"你们有哪些服务项目？","collection":"salon_knowledge","expected_chunk_ids":[],"expected_sources":["service_catalog_guide.pdf"],"notes":"服务项目说明。"}

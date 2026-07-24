@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -71,6 +72,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip retrieval (evaluate with mock chunks for testing).",
     )
+    parser.add_argument(
+        "--snapshot",
+        default=None,
+        help="Write a redacted verified snapshot JSON to this path.",
+    )
+    parser.add_argument(
+        "--corpus-version",
+        default=None,
+        help="Required corpus version when --snapshot is used.",
+    )
     return parser.parse_args()
 
 
@@ -100,9 +111,9 @@ def main() -> int:
     hybrid_search = None
     if not args.no_search:
         try:
-            from src.core.query_engine.query_processor import QueryProcessor
-            from src.core.query_engine.hybrid_search import create_hybrid_search
             from src.core.query_engine.dense_retriever import create_dense_retriever
+            from src.core.query_engine.hybrid_search import create_hybrid_search
+            from src.core.query_engine.query_processor import QueryProcessor
             from src.core.query_engine.sparse_retriever import create_sparse_retriever
             from src.ingestion.storage.bm25_indexer import BM25Indexer
             from src.libs.embedding.embedding_factory import EmbeddingFactory
@@ -165,6 +176,37 @@ def main() -> int:
     else:
         _print_report(report)
 
+    if args.snapshot:
+        if hybrid_search is None:
+            print("❌ Snapshot generation requires configured retrieval.", file=sys.stderr)
+            return 1
+        if report.summary.get("evaluated_queries", 0) == 0:
+            print("❌ Snapshot generation requires labelled ground truth.", file=sys.stderr)
+            return 1
+        if not args.corpus_version:
+            print("❌ --corpus-version is required with --snapshot.", file=sys.stderr)
+            return 2
+
+        from src.observability.evaluation.snapshot import build_snapshot, write_snapshot
+
+        git_commit_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=PROJECT_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        snapshot = build_snapshot(
+            report,
+            dataset_path=args.test_set,
+            git_commit_sha=git_commit_sha,
+            corpus_version=args.corpus_version,
+            collection=args.collection or settings.vector_store.collection_name,
+            settings=settings,
+        )
+        output = write_snapshot(snapshot, args.snapshot)
+        print(f"✅ Verified snapshot written: {output}")
+
     return 0
 
 
@@ -176,6 +218,8 @@ def _print_report(report) -> None:
     print(f"  Evaluator: {report.evaluator_name}")
     print(f"  Test Set:  {report.test_set_path}")
     print(f"  Queries:   {len(report.query_results)}")
+    print(f"  Evaluated: {report.summary.get('evaluated_queries', 0)}")
+    print(f"  Skipped:   {report.summary.get('not_evaluated_queries', 0)}")
     print(f"  Time:      {report.total_elapsed_ms:.0f} ms")
     print()
 
@@ -184,9 +228,15 @@ def _print_report(report) -> None:
     print("  AGGREGATE METRICS")
     print("─" * 60)
     if report.aggregate_metrics:
-        for metric, value in sorted(report.aggregate_metrics.items()):
-            bar = "█" * int(value * 20) + "░" * (20 - int(value * 20))
-            print(f"  {metric:<25s} {bar} {value:.4f}")
+        for level_name in ("chunk_level", "source_level"):
+            print(f"  {level_name}:")
+            for metric, aggregate in report.aggregate_metrics.get(level_name, {}).items():
+                rate = aggregate["rate"]
+                rendered = "not evaluated" if rate is None else f"{rate:.4f}"
+                print(
+                    f"    {metric:<20s} {rendered} "
+                    f"({aggregate['numerator']}/{aggregate['denominator']})"
+                )
     else:
         print("  (no metrics computed)")
     print()
@@ -198,11 +248,19 @@ def _print_report(report) -> None:
     for i, qr in enumerate(report.query_results, 1):
         print(f"\n  [{i}] {qr.query}")
         print(f"      Retrieved: {len(qr.retrieved_chunk_ids)} chunks")
-        if qr.metrics:
-            for metric, value in sorted(qr.metrics.items()):
-                print(f"      {metric}: {value:.4f}")
+        print(f"      Status: {qr.evaluation_status}")
+        if qr.metrics and qr.evaluation_status == "evaluated":
+            for level_name in ("chunk_level", "source_level"):
+                level = qr.metrics.get(level_name, {})
+                if level.get("evaluation_status") == "evaluated":
+                    print(
+                        f"      {level_name}: "
+                        f"Hit@1={level['hit_at_1']:.4f}, "
+                        f"Hit@3={level['hit_at_3']:.4f}, "
+                        f"MRR={level['mrr']:.4f}"
+                    )
         else:
-            print("      (no metrics)")
+            print("      (not evaluated: no ground truth)")
         print(f"      Time: {qr.elapsed_ms:.0f} ms")
 
     print()

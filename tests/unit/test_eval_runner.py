@@ -3,22 +3,20 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
 from src.libs.evaluator.base_evaluator import BaseEvaluator
 from src.observability.evaluation.eval_runner import (
-    EvalRunner,
     EvalReport,
+    EvalRunner,
     GoldenTestCase,
     QueryResult,
     load_test_set,
 )
-
 
 # ── Fixtures / Helpers ────────────────────────────────────────────
 
@@ -29,16 +27,16 @@ class StubEvaluator(BaseEvaluator):
     def evaluate(
         self,
         query: str,
-        retrieved_chunks: List[Any],
-        generated_answer: Optional[str] = None,
-        ground_truth: Optional[Any] = None,
-        trace: Optional[Any] = None,
+        retrieved_chunks: list[Any],
+        generated_answer: str | None = None,
+        ground_truth: Any | None = None,
+        trace: Any | None = None,
         **kwargs: Any,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         return {"hit_rate": 1.0, "mrr": 0.5}
 
 
-def _write_golden_json(path: Path, test_cases: List[Dict]) -> None:
+def _write_golden_json(path: Path, test_cases: list[dict]) -> None:
     data = {"test_cases": test_cases}
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
@@ -70,6 +68,25 @@ class TestLoadTestSet:
         f.write_text('{"wrong_key": []}', encoding="utf-8")
 
         with pytest.raises(ValueError, match="missing 'test_cases'"):
+            load_test_set(f)
+
+    def test_load_jsonl_dataset(self, tmp_path: Path) -> None:
+        f = tmp_path / "golden.jsonl"
+        f.write_text(
+            '{"id":"R1","query":"Q","expected_sources":["policy.pdf"]}\n',
+            encoding="utf-8",
+        )
+
+        cases = load_test_set(f)
+
+        assert cases[0].case_id == "R1"
+        assert cases[0].expected_sources == ["policy.pdf"]
+
+    def test_jsonl_reports_invalid_line(self, tmp_path: Path) -> None:
+        f = tmp_path / "golden.jsonl"
+        f.write_text('{"id":"R1"}\n', encoding="utf-8")
+
+        with pytest.raises(ValueError, match="line 1.*non-empty query"):
             load_test_set(f)
 
 
@@ -179,6 +196,37 @@ class TestEvalRunner:
         assert d["query_count"] == 1
         assert d["evaluator_name"] == "StubEvaluator"
 
+    def test_source_ground_truth_reaches_evaluator(self, tmp_path: Path) -> None:
+        from src.libs.evaluator.custom_evaluator import CustomEvaluator
+
+        f = tmp_path / "g.json"
+        _write_golden_json(
+            f,
+            [{"id": "S1", "query": "Q", "expected_sources": ["target.pdf"]}],
+        )
+        search = MagicMock()
+        search.search.return_value = [
+            {
+                "chunk_id": "c1",
+                "text": "answer",
+                "metadata": {"source_path": "/private/target.pdf"},
+            }
+        ]
+
+        report = EvalRunner(
+            hybrid_search=search,
+            evaluator=CustomEvaluator(),
+        ).run(f, top_k=3)
+
+        result = report.query_results[0]
+        assert result.evaluation_status == "evaluated"
+        assert result.returned_sources == ["target.pdf"]
+        assert report.aggregate_metrics["source_level"]["hit_at_1"] == {
+            "numerator": 1.0,
+            "denominator": 1,
+            "rate": 1.0,
+        }
+
 
 class TestEvalRunnerAggregation:
     """Test metric aggregation logic."""
@@ -209,6 +257,79 @@ class TestEvalRunnerAggregation:
         # Each metric averaged over only the queries that produced it
         assert avg["hit_rate"] == 1.0
         assert avg["faithfulness"] == 0.9
+
+    def test_mixed_evaluated_and_not_evaluated_denominator(self) -> None:
+        from src.libs.evaluator.custom_evaluator import CustomEvaluator
+
+        evaluator = CustomEvaluator()
+        evaluated = evaluator.evaluate(
+            "q1",
+            [{"id": "c1", "metadata": {"source": "target.pdf"}}],
+            ground_truth={"expected_sources": ["target.pdf"]},
+            top_k=3,
+        )
+        not_evaluated = evaluator.evaluate(
+            "q2",
+            [{"id": "c2", "metadata": {"source": "other.pdf"}}],
+            ground_truth=None,
+            top_k=3,
+        )
+
+        aggregate = EvalRunner._aggregate_metrics(
+            [
+                QueryResult(
+                    query="q1",
+                    evaluation_status="evaluated",
+                    metrics=evaluated,
+                ),
+                QueryResult(
+                    query="q2",
+                    evaluation_status="not_evaluated",
+                    metrics=not_evaluated,
+                ),
+            ]
+        )
+
+        assert aggregate["source_level"]["mrr"]["denominator"] == 1
+        assert aggregate["source_level"]["mrr"]["rate"] == 1.0
+
+    def test_all_not_evaluated_rates_are_none(self) -> None:
+        from src.libs.evaluator.custom_evaluator import CustomEvaluator
+
+        result = CustomEvaluator().evaluate("q", [{"id": "c1"}], ground_truth=None)
+        aggregate = EvalRunner._aggregate_metrics(
+            [
+                QueryResult(
+                    query="q",
+                    evaluation_status="not_evaluated",
+                    metrics=result,
+                )
+            ]
+        )
+
+        assert aggregate["chunk_level"]["mrr"]["denominator"] == 0
+        assert aggregate["chunk_level"]["mrr"]["rate"] is None
+        assert aggregate["source_level"]["hit_at_1"]["rate"] is None
+
+    def test_expected_empty_result_is_separate_from_retrieval_metrics(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        from src.libs.evaluator.custom_evaluator import CustomEvaluator
+
+        f = tmp_path / "g.json"
+        _write_golden_json(
+            f,
+            [{"id": "E1", "query": "missing", "expect_empty_result": True}],
+        )
+        report = EvalRunner(evaluator=CustomEvaluator()).run(f, top_k=3)
+
+        assert report.query_results[0].evaluation_status == "not_evaluated"
+        assert report.aggregate_metrics["empty_result_handling"] == {
+            "numerator": 1.0,
+            "denominator": 1,
+            "rate": 1.0,
+        }
 
 
 # ── Tests: Golden test set fixture ────────────────────────────────

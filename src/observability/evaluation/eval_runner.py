@@ -15,9 +15,9 @@ from __future__ import annotations
 import json
 import logging
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, cast
 
 from src.libs.evaluator.base_evaluator import BaseEvaluator
 
@@ -36,17 +36,32 @@ class GoldenTestCase:
     """
 
     query: str
-    expected_chunk_ids: List[str] = field(default_factory=list)
-    expected_sources: List[str] = field(default_factory=list)
-    reference_answer: Optional[str] = None
+    case_id: str = ""
+    category: str = "retrieval"
+    expected_chunk_ids: list[str] = field(default_factory=list)
+    expected_sources: list[str] = field(default_factory=list)
+    reference_answer: str | None = None
+    expect_empty_result: bool = False
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> GoldenTestCase:
+    def from_dict(cls, data: dict[str, Any]) -> GoldenTestCase:
+        query = data.get("query")
+        if not isinstance(query, str) or not query.strip():
+            raise ValueError("each evaluation case requires a non-empty query")
+        expected_chunk_ids = data.get("expected_chunk_ids", [])
+        expected_sources = data.get("expected_sources", [])
+        if not isinstance(expected_chunk_ids, list):
+            raise ValueError("expected_chunk_ids must be a list")
+        if not isinstance(expected_sources, list):
+            raise ValueError("expected_sources must be a list")
         return cls(
-            query=data["query"],
-            expected_chunk_ids=data.get("expected_chunk_ids", []),
-            expected_sources=data.get("expected_sources", []),
+            case_id=str(data.get("id", "")),
+            category=str(data.get("category", "retrieval")),
+            query=query,
+            expected_chunk_ids=expected_chunk_ids,
+            expected_sources=expected_sources,
             reference_answer=data.get("reference_answer"),
+            expect_empty_result=bool(data.get("expect_empty_result", False)),
         )
 
 
@@ -63,9 +78,17 @@ class QueryResult:
     """
 
     query: str
-    retrieved_chunk_ids: List[str] = field(default_factory=list)
-    generated_answer: Optional[str] = None
-    metrics: Dict[str, float] = field(default_factory=dict)
+    case_id: str = ""
+    category: str = "retrieval"
+    expected_chunk_ids: list[str] = field(default_factory=list)
+    expected_sources: list[str] = field(default_factory=list)
+    retrieved_chunk_ids: list[str] = field(default_factory=list)
+    returned_sources: list[str] = field(default_factory=list)
+    generated_answer: str | None = None
+    evaluation_status: str = "not_evaluated"
+    metrics: dict[str, Any] = field(default_factory=dict)
+    expect_empty_result: bool = False
+    empty_result_handling: float | None = None
     elapsed_ms: float = 0.0
 
 
@@ -81,36 +104,54 @@ class EvalReport:
         test_set_path: Path to the golden test set file.
     """
 
-    query_results: List[QueryResult] = field(default_factory=list)
-    aggregate_metrics: Dict[str, float] = field(default_factory=dict)
+    query_results: list[QueryResult] = field(default_factory=list)
+    aggregate_metrics: dict[str, Any] = field(default_factory=dict)
+    summary: dict[str, int] = field(default_factory=dict)
     total_elapsed_ms: float = 0.0
     evaluator_name: str = ""
     test_set_path: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialise report to dictionary."""
-        return {
+        return cast(dict[str, Any], _round_floats({
             "evaluator_name": self.evaluator_name,
             "test_set_path": self.test_set_path,
-            "total_elapsed_ms": round(self.total_elapsed_ms, 1),
-            "aggregate_metrics": {
-                k: round(v, 4) for k, v in self.aggregate_metrics.items()
-            },
+            "total_elapsed_ms": self.total_elapsed_ms,
+            "summary": self.summary,
+            "aggregate_metrics": self.aggregate_metrics,
             "query_count": len(self.query_results),
             "query_results": [
                 {
+                    "id": qr.case_id,
+                    "category": qr.category,
                     "query": qr.query,
+                    "expected_chunk_ids": qr.expected_chunk_ids,
+                    "expected_sources": qr.expected_sources,
                     "retrieved_chunk_ids": qr.retrieved_chunk_ids,
+                    "returned_sources": qr.returned_sources,
                     "generated_answer": qr.generated_answer,
-                    "metrics": {k: round(v, 4) for k, v in qr.metrics.items()},
-                    "elapsed_ms": round(qr.elapsed_ms, 1),
+                    "evaluation_status": qr.evaluation_status,
+                    "metrics": qr.metrics,
+                    "expect_empty_result": qr.expect_empty_result,
+                    "empty_result_handling": qr.empty_result_handling,
+                    "elapsed_ms": qr.elapsed_ms,
                 }
                 for qr in self.query_results
             ],
-        }
+        }))
 
 
-def load_test_set(path: str | Path) -> List[GoldenTestCase]:
+def _round_floats(value: Any) -> Any:
+    if isinstance(value, float):
+        return round(value, 4)
+    if isinstance(value, dict):
+        return {key: _round_floats(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_round_floats(item) for item in value]
+    return value
+
+
+def load_test_set(path: str | Path) -> list[GoldenTestCase]:
     """Load golden test set from a JSON file.
 
     Args:
@@ -126,6 +167,25 @@ def load_test_set(path: str | Path) -> List[GoldenTestCase]:
     file_path = Path(path)
     if not file_path.exists():
         raise FileNotFoundError(f"Golden test set not found: {file_path}")
+
+    if file_path.suffix.casefold() == ".jsonl":
+        cases: list[GoldenTestCase] = []
+        for line_number, raw_line in enumerate(
+            file_path.read_text(encoding="utf-8").splitlines(),
+            start=1,
+        ):
+            if not raw_line.strip():
+                continue
+            try:
+                data = json.loads(raw_line)
+                if not isinstance(data, dict):
+                    raise ValueError("case must be a JSON object")
+                cases.append(GoldenTestCase.from_dict(data))
+            except (json.JSONDecodeError, ValueError) as exc:
+                raise ValueError(
+                    f"Invalid JSONL evaluation case at line {line_number}: {exc}"
+                ) from exc
+        return cases
 
     with file_path.open("r", encoding="utf-8") as f:
         data = json.load(f)
@@ -163,9 +223,9 @@ class EvalRunner:
         self,
         settings: Any = None,
         hybrid_search: Any = None,
-        evaluator: Optional[BaseEvaluator] = None,
+        evaluator: BaseEvaluator | None = None,
         answer_generator: Any = None,
-        answer_overrides: Optional[Dict[int, str]] = None,
+        answer_overrides: dict[int, str] | None = None,
     ) -> None:
         """Initialize EvalRunner.
 
@@ -190,7 +250,7 @@ class EvalRunner:
         self,
         test_set_path: str | Path,
         top_k: int = 10,
-        collection: Optional[str] = None,
+        collection: str | None = None,
     ) -> EvalReport:
         """Run evaluation on the golden test set.
 
@@ -238,6 +298,20 @@ class EvalRunner:
 
         report.total_elapsed_ms = (time.monotonic() - t0) * 1000.0
         report.aggregate_metrics = self._aggregate_metrics(report.query_results)
+        report.summary = {
+            "total_queries": len(report.query_results),
+            "evaluated_queries": sum(
+                result.evaluation_status == "evaluated"
+                for result in report.query_results
+            ),
+            "not_evaluated_queries": sum(
+                result.evaluation_status == "not_evaluated"
+                for result in report.query_results
+            ),
+            "empty_result_cases": sum(
+                result.expect_empty_result for result in report.query_results
+            ),
+        }
 
         logger.info(
             "Evaluation complete: %d queries, aggregate=%s",
@@ -251,8 +325,8 @@ class EvalRunner:
         self,
         test_case: GoldenTestCase,
         top_k: int = 10,
-        collection: Optional[str] = None,
-        answer_override: Optional[str] = None,
+        collection: str | None = None,
+        answer_override: str | None = None,
     ) -> QueryResult:
         """Evaluate a single test case.
 
@@ -267,13 +341,25 @@ class EvalRunner:
             QueryResult with metrics for this test case.
         """
         t0 = time.monotonic()
-        qr = QueryResult(query=test_case.query)
+        qr = QueryResult(
+            case_id=test_case.case_id,
+            category=test_case.category,
+            query=test_case.query,
+            expected_chunk_ids=list(test_case.expected_chunk_ids),
+            expected_sources=[
+                self._normalize_source(source)
+                for source in test_case.expected_sources
+                if self._normalize_source(source)
+            ],
+            expect_empty_result=test_case.expect_empty_result,
+        )
 
         # Step 1: Retrieve chunks
         retrieved_chunks = self._retrieve(test_case.query, top_k, collection)
         qr.retrieved_chunk_ids = [
             self._get_chunk_id(c) for c in retrieved_chunks
         ]
+        citation_sources = self._get_citation_sources(retrieved_chunks)
 
         # Step 2: Generate answer — prefer user override, then generator, then fallback
         if answer_override:
@@ -283,11 +369,10 @@ class EvalRunner:
         qr.generated_answer = answer
 
         # Step 3: Build ground truth
-        ground_truth = (
-            {"ids": test_case.expected_chunk_ids}
-            if test_case.expected_chunk_ids
-            else None
-        )
+        ground_truth = {
+            "expected_chunk_ids": test_case.expected_chunk_ids,
+            "expected_sources": test_case.expected_sources,
+        }
 
         # Step 4: Evaluate
         try:
@@ -296,11 +381,30 @@ class EvalRunner:
                 retrieved_chunks=retrieved_chunks,
                 generated_answer=answer,
                 ground_truth=ground_truth,
+                top_k=top_k,
+                citation_sources=citation_sources,
             )
             qr.metrics = metrics
+            qr.evaluation_status = str(
+                metrics.get(
+                    "evaluation_status",
+                    (
+                        "evaluated"
+                        if any(
+                            isinstance(metrics.get(name), (int, float))
+                            for name in ("hit_rate", "mrr")
+                        )
+                        else "not_evaluated"
+                    ),
+                )
+            )
+            qr.returned_sources = list(metrics.get("returned_sources", []))
         except Exception as exc:
             logger.warning("Evaluation failed for '%s': %s", test_case.query[:40], exc)
             qr.metrics = {}
+
+        if test_case.expect_empty_result:
+            qr.empty_result_handling = 1.0 if not retrieved_chunks else 0.0
 
         qr.elapsed_ms = (time.monotonic() - t0) * 1000.0
         return qr
@@ -309,8 +413,8 @@ class EvalRunner:
         self,
         query: str,
         top_k: int,
-        collection: Optional[str],
-    ) -> List[Any]:
+        collection: str | None,
+    ) -> list[Any]:
         """Retrieve chunks using HybridSearch.
 
         Falls back to an empty list if search is not configured.
@@ -329,7 +433,7 @@ class EvalRunner:
             logger.warning("Retrieval failed for '%s': %s", query[:40], exc)
             return []
 
-    def _generate_answer(self, query: str, chunks: List[Any]) -> str:
+    def _generate_answer(self, query: str, chunks: list[Any]) -> str:
         """Generate an answer from retrieved chunks.
 
         If a custom answer_generator is provided, use it.
@@ -337,7 +441,7 @@ class EvalRunner:
         """
         if self.answer_generator is not None:
             try:
-                return self.answer_generator(query, chunks)
+                return str(self.answer_generator(query, chunks))
             except Exception as exc:
                 logger.warning("Answer generation failed: %s", exc)
 
@@ -370,9 +474,42 @@ class EvalRunner:
             return str(getattr(chunk, "id"))
         return str(chunk)
 
+    def _get_citation_sources(self, chunks: list[Any]) -> list[str]:
+        """Return sources in the same order as the public Citation list."""
+        if chunks and all(
+            hasattr(chunk, "chunk_id")
+            and hasattr(chunk, "score")
+            and hasattr(chunk, "text")
+            and hasattr(chunk, "metadata")
+            for chunk in chunks
+        ):
+            from src.core.response.citation_generator import CitationGenerator
+
+            return [
+                self._normalize_source(citation.source)
+                for citation in CitationGenerator().generate(chunks)
+                if self._normalize_source(citation.source)
+            ]
+
+        sources: list[str] = []
+        for chunk in chunks:
+            metadata = chunk.get("metadata", chunk) if isinstance(chunk, dict) else {}
+            if isinstance(metadata, dict):
+                source = metadata.get("source_path", metadata.get("source", ""))
+                normalized = self._normalize_source(source)
+                if normalized:
+                    sources.append(normalized)
+        return sources
+
     @staticmethod
-    def _aggregate_metrics(results: List[QueryResult]) -> Dict[str, float]:
-        """Compute average metrics across all query results.
+    def _normalize_source(value: Any) -> str:
+        from src.libs.evaluator.custom_evaluator import normalize_source_identifier
+
+        return normalize_source_identifier(value)
+
+    @staticmethod
+    def _aggregate_metrics(results: list[QueryResult]) -> dict[str, Any]:
+        """Compute auditable aggregate metrics across evaluated queries.
 
         Args:
             results: List of QueryResult with per-query metrics.
@@ -383,15 +520,95 @@ class EvalRunner:
         if not results:
             return {}
 
-        # Collect all metric keys
-        all_keys: set[str] = set()
-        for qr in results:
-            all_keys.update(qr.metrics.keys())
+        aggregate: dict[str, Any] = {}
+        for level_name in ("chunk_level", "source_level"):
+            level_metrics: dict[str, Any] = {}
+            for metric_name in ("hit_at_1", "hit_at_3", "hit_at_k", "mrr"):
+                values = [
+                    float(level[metric_name])
+                    for result in results
+                    if isinstance((level := result.metrics.get(level_name)), dict)
+                    and level.get("evaluation_status") == "evaluated"
+                    and level.get(metric_name) is not None
+                ]
+                level_metrics[metric_name] = _aggregate_values(values)
+            aggregate[level_name] = level_metrics
 
-        # Average each metric
-        averages: Dict[str, float] = {}
-        for key in sorted(all_keys):
-            values = [qr.metrics[key] for qr in results if key in qr.metrics]
-            averages[key] = sum(values) / len(values) if values else 0.0
+        aggregate["citation"] = {
+            "presence": _aggregate_values(
+                [
+                    float(result.metrics["citation_presence"])
+                    for result in results
+                    if result.metrics.get("citation_presence") is not None
+                    and not result.expect_empty_result
+                ]
+            ),
+            "expected_source_match": _aggregate_values(
+                [
+                    float(result.metrics["citation_expected_source_match"])
+                    for result in results
+                    if result.metrics.get("citation_expected_source_match")
+                    is not None
+                ]
+            ),
+        }
+        aggregate["empty_result_handling"] = _aggregate_values(
+            [
+                float(result.empty_result_handling)
+                for result in results
+                if result.empty_result_handling is not None
+            ]
+        )
 
-        return averages
+        legacy_hit_rate = [
+            float(result.metrics["hit_rate"])
+            for result in results
+            if isinstance(result.metrics.get("hit_rate"), (int, float))
+        ]
+        legacy_mrr = [
+            float(result.metrics["mrr"])
+            for result in results
+            if isinstance(result.metrics.get("mrr"), (int, float))
+        ]
+        primary = (
+            aggregate["chunk_level"]
+            if aggregate["chunk_level"]["mrr"]["denominator"]
+            else aggregate["source_level"]
+        )
+        aggregate["hit_rate"] = (
+            _aggregate_values(legacy_hit_rate)["rate"]
+            if legacy_hit_rate
+            else primary["hit_at_k"]["rate"]
+        )
+        aggregate["mrr"] = (
+            _aggregate_values(legacy_mrr)["rate"]
+            if legacy_mrr
+            else primary["mrr"]["rate"]
+        )
+
+        extra_keys = {
+            key
+            for result in results
+            for key, value in result.metrics.items()
+            if isinstance(value, (int, float))
+            and key not in {"hit_rate", "mrr", "citation_presence"}
+        }
+        for key in sorted(extra_keys):
+            aggregate[key] = _aggregate_values(
+                [
+                    float(result.metrics[key])
+                    for result in results
+                    if isinstance(result.metrics.get(key), (int, float))
+                ]
+            )["rate"]
+        return aggregate
+
+
+def _aggregate_values(values: list[float]) -> dict[str, Any]:
+    numerator = sum(values)
+    denominator = len(values)
+    return {
+        "numerator": numerator,
+        "denominator": denominator,
+        "rate": numerator / denominator if denominator else None,
+    }
