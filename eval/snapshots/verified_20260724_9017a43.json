@@ -1,0 +1,473 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-24T06:35:11.241987+00:00",
+  "git_commit_sha": "9017a43b6f8b0d8f60e354c7eb9fb5d882e0c10b",
+  "dataset_sha256": "fd38090f54c18f3f5c267f34510be4cbb41f29cad4d9da41ea72fd471c274145",
+  "corpus_version": "salon-7pdf-24chunks",
+  "collection": "salon_knowledge",
+  "query_count": 8,
+  "evaluated_count": 8,
+  "not_evaluated_count": 0,
+  "model_identifier": "qwen-plus",
+  "embedding_model_identifier": "text-embedding-v4",
+  "chunking": {
+    "splitter": "recursive",
+    "chunk_size": 650,
+    "chunk_overlap": 80
+  },
+  "retrieval": {
+    "dense_top_k": 20,
+    "sparse_top_k": 20,
+    "fusion_top_k": 10,
+    "rrf_k": 60
+  },
+  "aggregate_metrics": {
+    "chunk_level": {
+      "hit_at_1": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "hit_at_3": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "hit_at_k": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "mrr": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      }
+    },
+    "source_level": {
+      "hit_at_1": {
+        "numerator": 7.0,
+        "denominator": 8,
+        "rate": 0.875
+      },
+      "hit_at_3": {
+        "numerator": 8.0,
+        "denominator": 8,
+        "rate": 1.0
+      },
+      "hit_at_k": {
+        "numerator": 8.0,
+        "denominator": 8,
+        "rate": 1.0
+      },
+      "mrr": {
+        "numerator": 7.5,
+        "denominator": 8,
+        "rate": 0.9375
+      }
+    },
+    "citation": {
+      "presence": {
+        "numerator": 8.0,
+        "denominator": 8,
+        "rate": 1.0
+      },
+      "expected_source_match": {
+        "numerator": 8.0,
+        "denominator": 8,
+        "rate": 1.0
+      }
+    },
+    "empty_result_handling": {
+      "numerator": 0,
+      "denominator": 0,
+      "rate": null
+    },
+    "hit_rate": 1.0,
+    "mrr": 0.9375,
+    "citation_expected_source_match": 1.0
+  },
+  "latency": {
+    "sample_count": 8,
+    "p50_ms": 276.8293,
+    "p95_ms": 1007.9332
+  },
+  "query_results": [
+    {
+      "id": "R001",
+      "category": "salon_retrieval",
+      "expected_chunk_ids": [],
+      "expected_sources": [
+        "hair_coloring_care.pdf"
+      ],
+      "returned_chunk_ids": [
+        "b1850dcb_0000_e8af0c47",
+        "648d4847_0000_85a82a55",
+        "648d4847_0001_35b79cda"
+      ],
+      "returned_sources": [
+        "perm_and_scalp_care.pdf",
+        "hair_coloring_care.pdf",
+        "hair_coloring_care.pdf"
+      ],
+      "evaluation_status": "evaluated",
+      "metrics": {
+        "evaluation_status": "evaluated",
+        "chunk_level": {
+          "evaluation_status": "not_evaluated",
+          "first_relevant_rank": null,
+          "hit_at_1": null,
+          "hit_at_3": null,
+          "hit_at_k": null,
+          "mrr": null,
+          "k": 3
+        },
+        "source_level": {
+          "evaluation_status": "evaluated",
+          "first_relevant_rank": 2,
+          "hit_at_1": 0.0,
+          "hit_at_3": 1.0,
+          "hit_at_k": 1.0,
+          "mrr": 0.5,
+          "k": 3
+        },
+        "citation_presence": 1.0,
+        "citation_expected_source_match": 1.0,
+        "hit_rate": 1.0,
+        "mrr": 0.5
+      },
+      "expect_empty_result": false,
+      "empty_result_handling": null,
+      "latency_ms": 1007.9332
+    },
+    {
+      "id": "R002",
+      "category": "salon_retrieval",
+      "expected_chunk_ids": [],
+      "expected_sources": [
+        "hair_coloring_care.pdf"
+      ],
+      "returned_chunk_ids": [
+        "648d4847_0003_5e65a107",
+        "648d4847_0002_422bfbbc",
+        "b1850dcb_0002_95c17e79"
+      ],
+      "returned_sources": [
+        "hair_coloring_care.pdf",
+        "hair_coloring_care.pdf",
+        "perm_and_scalp_care.pdf"
+      ],
+      "evaluation_status": "evaluated",
+      "metrics": {
+        "evaluation_status": "evaluated",
+        "chunk_level": {
+          "evaluation_status": "not_evaluated",
+          "first_relevant_rank": null,
+          "hit_at_1": null,
+          "hit_at_3": null,
+          "hit_at_k": null,
+          "mrr": null,
+          "k": 3
+        },
+        "source_level": {
+          "evaluation_status": "evaluated",
+          "first_relevant_rank": 1,
+          "hit_at_1": 1.0,
+          "hit_at_3": 1.0,
+          "hit_at_k": 1.0,
+          "mrr": 1.0,
+          "k": 3
+        },
+        "citation_presence": 1.0,
+        "citation_expected_source_match": 1.0,
+        "hit_rate": 1.0,
+        "mrr": 1.0
+      },
+      "expect_empty_result": false,
+      "empty_result_handling": null,
+      "latency_ms": 243.9365
+    },
+    {
+      "id": "R003",
+      "category": "salon_retrieval",
+      "expected_chunk_ids": [],
+      "expected_sources": [
+        "perm_and_scalp_care.pdf"
+      ],
+      "returned_chunk_ids": [
+        "b1850dcb_0002_95c17e79",
+        "f96ac27f_0003_a4912c2d",
+        "b1850dcb_0001_0d628123"
+      ],
+      "returned_sources": [
+        "perm_and_scalp_care.pdf",
+        "service_catalog_guide.pdf",
+        "perm_and_scalp_care.pdf"
+      ],
+      "evaluation_status": "evaluated",
+      "metrics": {
+        "evaluation_status": "evaluated",
+        "chunk_level": {
+          "evaluation_status": "not_evaluated",
+          "first_relevant_rank": null,
+          "hit_at_1": null,
+          "hit_at_3": null,
+          "hit_at_k": null,
+          "mrr": null,
+          "k": 3
+        },
+        "source_level": {
+          "evaluation_status": "evaluated",
+          "first_relevant_rank": 1,
+          "hit_at_1": 1.0,
+          "hit_at_3": 1.0,
+          "hit_at_k": 1.0,
+          "mrr": 1.0,
+          "k": 3
+        },
+        "citation_presence": 1.0,
+        "citation_expected_source_match": 1.0,
+        "hit_rate": 1.0,
+        "mrr": 1.0
+      },
+      "expect_empty_result": false,
+      "empty_result_handling": null,
+      "latency_ms": 281.6101
+    },
+    {
+      "id": "R004",
+      "category": "salon_retrieval",
+      "expected_chunk_ids": [],
+      "expected_sources": [
+        "perm_and_scalp_care.pdf"
+      ],
+      "returned_chunk_ids": [
+        "b1850dcb_0002_95c17e79",
+        "b1850dcb_0000_e8af0c47",
+        "c818ebc5_0000_3d82cafc"
+      ],
+      "returned_sources": [
+        "perm_and_scalp_care.pdf",
+        "perm_and_scalp_care.pdf",
+        "stylist_specialty_guide.pdf"
+      ],
+      "evaluation_status": "evaluated",
+      "metrics": {
+        "evaluation_status": "evaluated",
+        "chunk_level": {
+          "evaluation_status": "not_evaluated",
+          "first_relevant_rank": null,
+          "hit_at_1": null,
+          "hit_at_3": null,
+          "hit_at_k": null,
+          "mrr": null,
+          "k": 3
+        },
+        "source_level": {
+          "evaluation_status": "evaluated",
+          "first_relevant_rank": 1,
+          "hit_at_1": 1.0,
+          "hit_at_3": 1.0,
+          "hit_at_k": 1.0,
+          "mrr": 1.0,
+          "k": 3
+        },
+        "citation_presence": 1.0,
+        "citation_expected_source_match": 1.0,
+        "hit_rate": 1.0,
+        "mrr": 1.0
+      },
+      "expect_empty_result": false,
+      "empty_result_handling": null,
+      "latency_ms": 238.9073
+    },
+    {
+      "id": "R005",
+      "category": "salon_retrieval",
+      "expected_chunk_ids": [],
+      "expected_sources": [
+        "store_information.pdf"
+      ],
+      "returned_chunk_ids": [
+        "347b0d1d_0003_bb78dadf",
+        "347b0d1d_0000_ca6fc988",
+        "347b0d1d_0002_18bb82e2"
+      ],
+      "returned_sources": [
+        "store_information.pdf",
+        "store_information.pdf",
+        "store_information.pdf"
+      ],
+      "evaluation_status": "evaluated",
+      "metrics": {
+        "evaluation_status": "evaluated",
+        "chunk_level": {
+          "evaluation_status": "not_evaluated",
+          "first_relevant_rank": null,
+          "hit_at_1": null,
+          "hit_at_3": null,
+          "hit_at_k": null,
+          "mrr": null,
+          "k": 3
+        },
+        "source_level": {
+          "evaluation_status": "evaluated",
+          "first_relevant_rank": 1,
+          "hit_at_1": 1.0,
+          "hit_at_3": 1.0,
+          "hit_at_k": 1.0,
+          "mrr": 1.0,
+          "k": 3
+        },
+        "citation_presence": 1.0,
+        "citation_expected_source_match": 1.0,
+        "hit_rate": 1.0,
+        "mrr": 1.0
+      },
+      "expect_empty_result": false,
+      "empty_result_handling": null,
+      "latency_ms": 279.9062
+    },
+    {
+      "id": "R006",
+      "category": "salon_retrieval",
+      "expected_chunk_ids": [],
+      "expected_sources": [
+        "booking_and_cancellation_policy.pdf"
+      ],
+      "returned_chunk_ids": [
+        "81daef78_0002_c73b34b7",
+        "81daef78_0001_86457def",
+        "81daef78_0000_9422f1bc"
+      ],
+      "returned_sources": [
+        "booking_and_cancellation_policy.pdf",
+        "booking_and_cancellation_policy.pdf",
+        "booking_and_cancellation_policy.pdf"
+      ],
+      "evaluation_status": "evaluated",
+      "metrics": {
+        "evaluation_status": "evaluated",
+        "chunk_level": {
+          "evaluation_status": "not_evaluated",
+          "first_relevant_rank": null,
+          "hit_at_1": null,
+          "hit_at_3": null,
+          "hit_at_k": null,
+          "mrr": null,
+          "k": 3
+        },
+        "source_level": {
+          "evaluation_status": "evaluated",
+          "first_relevant_rank": 1,
+          "hit_at_1": 1.0,
+          "hit_at_3": 1.0,
+          "hit_at_k": 1.0,
+          "mrr": 1.0,
+          "k": 3
+        },
+        "citation_presence": 1.0,
+        "citation_expected_source_match": 1.0,
+        "hit_rate": 1.0,
+        "mrr": 1.0
+      },
+      "expect_empty_result": false,
+      "empty_result_handling": null,
+      "latency_ms": 276.8293
+    },
+    {
+      "id": "R007",
+      "category": "salon_retrieval",
+      "expected_chunk_ids": [],
+      "expected_sources": [
+        "membership_and_after_sales.pdf"
+      ],
+      "returned_chunk_ids": [
+        "1e3c58bf_0000_9ef38cb8",
+        "1e3c58bf_0002_691497df",
+        "1e3c58bf_0001_7bba0723"
+      ],
+      "returned_sources": [
+        "membership_and_after_sales.pdf",
+        "membership_and_after_sales.pdf",
+        "membership_and_after_sales.pdf"
+      ],
+      "evaluation_status": "evaluated",
+      "metrics": {
+        "evaluation_status": "evaluated",
+        "chunk_level": {
+          "evaluation_status": "not_evaluated",
+          "first_relevant_rank": null,
+          "hit_at_1": null,
+          "hit_at_3": null,
+          "hit_at_k": null,
+          "mrr": null,
+          "k": 3
+        },
+        "source_level": {
+          "evaluation_status": "evaluated",
+          "first_relevant_rank": 1,
+          "hit_at_1": 1.0,
+          "hit_at_3": 1.0,
+          "hit_at_k": 1.0,
+          "mrr": 1.0,
+          "k": 3
+        },
+        "citation_presence": 1.0,
+        "citation_expected_source_match": 1.0,
+        "hit_rate": 1.0,
+        "mrr": 1.0
+      },
+      "expect_empty_result": false,
+      "empty_result_handling": null,
+      "latency_ms": 329.4232
+    },
+    {
+      "id": "R008",
+      "category": "salon_retrieval",
+      "expected_chunk_ids": [],
+      "expected_sources": [
+        "service_catalog_guide.pdf"
+      ],
+      "returned_chunk_ids": [
+        "f96ac27f_0000_48de77c0",
+        "347b0d1d_0000_ca6fc988",
+        "1e3c58bf_0000_9ef38cb8"
+      ],
+      "returned_sources": [
+        "service_catalog_guide.pdf",
+        "store_information.pdf",
+        "membership_and_after_sales.pdf"
+      ],
+      "evaluation_status": "evaluated",
+      "metrics": {
+        "evaluation_status": "evaluated",
+        "chunk_level": {
+          "evaluation_status": "not_evaluated",
+          "first_relevant_rank": null,
+          "hit_at_1": null,
+          "hit_at_3": null,
+          "hit_at_k": null,
+          "mrr": null,
+          "k": 3
+        },
+        "source_level": {
+          "evaluation_status": "evaluated",
+          "first_relevant_rank": 1,
+          "hit_at_1": 1.0,
+          "hit_at_3": 1.0,
+          "hit_at_k": 1.0,
+          "mrr": 1.0,
+          "k": 3
+        },
+        "citation_presence": 1.0,
+        "citation_expected_source_match": 1.0,
+        "hit_rate": 1.0,
+        "mrr": 1.0
+      },
+      "expect_empty_result": false,
+      "empty_result_handling": null,
+      "latency_ms": 273.609
+    }
+  ]
+}

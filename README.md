@@ -237,7 +237,7 @@ initialize -> tools/list -> query_knowledge_hub
 
 已保存的历史 ingestion 说明记录了 salon 示例的 7 个 PDF、24 个 chunks、24 个 vectors 和 24 个 BM25 documents；本次 README 修改未重新执行 ingestion。该结果只说明示例数据链路和索引规模，不是通用检索质量 benchmark。
 
-本仓库现有 8 条带来源 Ground Truth 的 salon 独立检索集。2026-07-24 的真实 Provider 验证结果为 Source Hit@1 `7/8`、Hit@3 `8/8`、MRR `0.9375`、Citation expected-source match `8/8`。这是小型受控语料的回归结果，不是生产准确率或通用 Benchmark。数据集、分母语义和复现方式见 [检索评估](docs/EVALUATION.md)。
+本仓库现有 8 条带来源 Ground Truth 的 salon 独立检索集。2026-07-24 的真实 Provider 验证结果为 Source Hit@1 `7/8`、Hit@3 `8/8`、MRR `0.9375`、Citation expected-source match `8/8`。这是小型受控语料的回归结果，不是生产准确率或通用 Benchmark。数据集、[去敏验证快照](eval/snapshots/verified_20260724_9017a43.json)、分母语义和复现方式见 [检索评估](docs/EVALUATION.md)。
 
 `tests/fixtures/golden_test_set.json` 仅是无 Ground Truth 的 sample/template；其样本状态为 `not_evaluated`，不会被记为零分或进入 Hit@K / MRR 分母。
 
