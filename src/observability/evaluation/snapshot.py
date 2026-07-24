@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from src.libs.evaluator.custom_evaluator import CustomEvaluator
 from src.observability.evaluation.eval_runner import EvalReport, EvalRunner, QueryResult
 
 SCHEMA_VERSION = "1.0"
@@ -119,23 +120,7 @@ def verify_snapshot(snapshot: dict[str, Any]) -> None:
     if evaluated_count + not_evaluated_count != len(query_results):
         raise ValueError("query_results contain an invalid evaluation_status")
 
-    reconstructed = [
-        QueryResult(
-            query="",
-            case_id=str(item.get("id", "")),
-            category=str(item.get("category", "retrieval")),
-            expected_chunk_ids=list(item.get("expected_chunk_ids", [])),
-            expected_sources=list(item.get("expected_sources", [])),
-            retrieved_chunk_ids=list(item.get("returned_chunk_ids", [])),
-            returned_sources=list(item.get("returned_sources", [])),
-            evaluation_status=str(item.get("evaluation_status")),
-            metrics=dict(item.get("metrics", {})),
-            expect_empty_result=bool(item.get("expect_empty_result", False)),
-            empty_result_handling=item.get("empty_result_handling"),
-            elapsed_ms=float(item.get("latency_ms", 0.0)),
-        )
-        for item in query_results
-    ]
+    reconstructed = [_recompute_query_result(item) for item in query_results]
     recomputed = EvalRunner._aggregate_metrics(reconstructed)
     if not _equal_numbers(snapshot.get("aggregate_metrics"), recomputed):
         raise ValueError("aggregate_metrics do not match query_results")
@@ -175,6 +160,78 @@ def _public_query_result(result: QueryResult) -> dict[str, Any]:
         "empty_result_handling": result.empty_result_handling,
         "latency_ms": round(result.elapsed_ms, 4),
     }
+
+
+def _recompute_query_result(item: dict[str, Any]) -> QueryResult:
+    expected_chunk_ids = list(item.get("expected_chunk_ids", []))
+    expected_sources = list(item.get("expected_sources", []))
+    returned_chunk_ids = list(item.get("returned_chunk_ids", []))
+    returned_sources = list(item.get("returned_sources", []))
+    stored_metrics = item.get("metrics")
+    if not isinstance(stored_metrics, dict):
+        raise ValueError("query result metrics must be an object")
+
+    level = stored_metrics.get("chunk_level")
+    if not isinstance(level, dict):
+        level = stored_metrics.get("source_level")
+    top_k = level.get("k") if isinstance(level, dict) else None
+    if not isinstance(top_k, int) or top_k <= 0:
+        raise ValueError("query result metrics require a positive k")
+
+    retrieved_chunks = [
+        {
+            "id": chunk_id,
+            "metadata": {
+                "source": (
+                    returned_sources[index]
+                    if index < len(returned_sources)
+                    else ""
+                )
+            },
+        }
+        for index, chunk_id in enumerate(returned_chunk_ids)
+    ]
+    recomputed_metrics = CustomEvaluator().evaluate(
+        "snapshot verification query",
+        retrieved_chunks,
+        ground_truth={
+            "expected_chunk_ids": expected_chunk_ids,
+            "expected_sources": expected_sources,
+        },
+        top_k=top_k,
+        citation_sources=returned_sources,
+    )
+    recomputed_metrics.pop("returned_sources", None)
+    if not _equal_numbers(stored_metrics, recomputed_metrics):
+        raise ValueError("query result metrics do not match expected and returned rankings")
+
+    expect_empty_result = bool(item.get("expect_empty_result", False))
+    empty_result_handling = (
+        1.0 if expect_empty_result and not returned_chunk_ids else
+        0.0 if expect_empty_result else
+        None
+    )
+    if not _equal_numbers(item.get("empty_result_handling"), empty_result_handling):
+        raise ValueError("empty_result_handling does not match returned results")
+
+    status = str(recomputed_metrics["evaluation_status"])
+    if item.get("evaluation_status") != status:
+        raise ValueError("evaluation_status does not match ground truth")
+
+    return QueryResult(
+        query="",
+        case_id=str(item.get("id", "")),
+        category=str(item.get("category", "retrieval")),
+        expected_chunk_ids=expected_chunk_ids,
+        expected_sources=expected_sources,
+        retrieved_chunk_ids=returned_chunk_ids,
+        returned_sources=returned_sources,
+        evaluation_status=status,
+        metrics=recomputed_metrics,
+        expect_empty_result=expect_empty_result,
+        empty_result_handling=empty_result_handling,
+        elapsed_ms=float(item.get("latency_ms", 0.0)),
+    )
 
 
 def _settings_values(settings: Any, names: tuple[str, ...]) -> dict[str, Any]:

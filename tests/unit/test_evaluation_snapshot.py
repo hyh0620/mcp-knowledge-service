@@ -145,6 +145,28 @@ def test_snapshot_recomputes_aggregates(tmp_path) -> None:
         verify_snapshot(snapshot)
 
 
+def test_snapshot_recomputes_each_query_metric(tmp_path) -> None:
+    dataset = tmp_path / "dataset.json"
+    dataset.write_text("{}", encoding="utf-8")
+    snapshot = build_snapshot(
+        _report(),
+        dataset_path=dataset,
+        git_commit_sha="e" * 40,
+        corpus_version="corpus-v1",
+        collection="knowledge",
+        settings=_settings(),
+    )
+    snapshot["query_results"][0]["metrics"]["source_level"]["mrr"] = 0.5
+    snapshot["aggregate_metrics"]["source_level"]["mrr"] = {
+        "numerator": 0.5,
+        "denominator": 1,
+        "rate": 0.5,
+    }
+
+    with pytest.raises(ValueError, match="query result metrics"):
+        verify_snapshot(snapshot)
+
+
 def test_snapshot_rejects_source_paths(tmp_path) -> None:
     dataset = tmp_path / "dataset.json"
     dataset.write_text("{}", encoding="utf-8")
