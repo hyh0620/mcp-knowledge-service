@@ -1,5 +1,5 @@
 {
-  "description": "Golden test set for MCP Knowledge Service retrieval evaluation. Contains test queries with expected chunk IDs and expected sources for objective retrieval metrics.",
+  "description": "Sample/template fixture for evaluator loading and flow tests. It has no retrieval ground truth and must not be reported as a quality benchmark.",
   "version": "1.0",
   "test_cases": [
     {

@@ -42,8 +42,9 @@ class TestCustomEvaluator:
         with pytest.raises(ValueError, match="Query cannot be empty"):
             evaluator.evaluate("  ", [{"id": "x"}], ground_truth=["x"])
 
-        with pytest.raises(ValueError, match="retrieved_chunks cannot be empty"):
-            evaluator.evaluate("query", [], ground_truth=["x"])
+        metrics = evaluator.evaluate("query", [], ground_truth=["x"], top_k=3)
+        assert metrics["evaluation_status"] == "evaluated"
+        assert metrics["hit_rate"] == 0.0
 
     def test_unsupported_metric_raises(self) -> None:
         with pytest.raises(ValueError, match="Unsupported custom metrics"):
@@ -161,3 +162,119 @@ class TestCustomEvaluatorBoundary:
             evaluator.evaluate("", [{"id": "x"}])
         with pytest.raises(ValueError):
             evaluator.evaluate("q", [])
+
+
+class TestCustomEvaluatorGroundTruthSemantics:
+    """Ground-truth presence and ranking levels have distinct semantics."""
+
+    def test_no_ground_truth_is_not_evaluated(self) -> None:
+        result = CustomEvaluator().evaluate(
+            "q",
+            [{"id": "c1", "metadata": {"source_path": "/private/a.pdf"}}],
+        )
+
+        assert result["evaluation_status"] == "not_evaluated"
+        assert result["chunk_level"]["mrr"] is None
+        assert result["source_level"]["hit_at_1"] is None
+        assert "hit_rate" not in result
+
+    @pytest.mark.parametrize(
+        ("expected", "rank", "mrr"),
+        [
+            ("c1", 1, 1.0),
+            ("c2", 2, 0.5),
+            ("missing", None, 0.0),
+        ],
+    )
+    def test_chunk_level_rank(self, expected: str, rank: int | None, mrr: float) -> None:
+        result = CustomEvaluator().evaluate(
+            "q",
+            [{"id": "c1"}, {"id": "c2"}],
+            ground_truth={"expected_chunk_ids": [expected]},
+            top_k=3,
+        )
+
+        assert result["chunk_level"]["first_relevant_rank"] == rank
+        assert result["chunk_level"]["mrr"] == mrr
+        assert result["source_level"]["evaluation_status"] == "not_evaluated"
+
+    def test_source_only_ground_truth_uses_public_filename(self) -> None:
+        result = CustomEvaluator().evaluate(
+            "q",
+            [
+                {
+                    "id": "c1",
+                    "metadata": {"source_path": "/private/corpus/other.pdf"},
+                },
+                {
+                    "id": "c2",
+                    "metadata": {"source_path": r"C:\corpus\Policy.PDF"},
+                },
+            ],
+            ground_truth={"expected_sources": ["/reference/policy.pdf"]},
+            top_k=3,
+        )
+
+        assert result["chunk_level"]["evaluation_status"] == "not_evaluated"
+        assert result["source_level"]["first_relevant_rank"] == 2
+        assert result["source_level"]["mrr"] == 0.5
+        assert result["returned_sources"] == ["other.pdf", "policy.pdf"]
+
+    def test_chunk_and_source_ground_truth_are_reported_separately(self) -> None:
+        result = CustomEvaluator().evaluate(
+            "q",
+            [
+                {"id": "c1", "metadata": {"source": "policy.pdf"}},
+                {"id": "c2", "metadata": {"source": "guide.pdf"}},
+            ],
+            ground_truth={
+                "expected_chunk_ids": ["c2"],
+                "expected_sources": ["policy.pdf"],
+            },
+            top_k=3,
+        )
+
+        assert result["chunk_level"]["first_relevant_rank"] == 2
+        assert result["source_level"]["first_relevant_rank"] == 1
+
+    def test_duplicate_chunks_do_not_change_source_rank(self) -> None:
+        result = CustomEvaluator().evaluate(
+            "q",
+            [
+                {"id": "a1", "metadata": {"source": "a.pdf"}},
+                {"id": "a2", "metadata": {"source": "a.pdf"}},
+                {"id": "b1", "metadata": {"source": "b.pdf"}},
+            ],
+            ground_truth={"expected_sources": ["b.pdf"]},
+            top_k=3,
+        )
+
+        assert result["source_level"]["first_relevant_rank"] == 2
+        assert result["source_level"]["mrr"] == 0.5
+
+    def test_source_metrics_follow_final_citation_order(self) -> None:
+        result = CustomEvaluator().evaluate(
+            "q",
+            [
+                {"id": "c1", "metadata": {"source": "raw-first.pdf"}},
+                {"id": "c2", "metadata": {"source": "raw-second.pdf"}},
+            ],
+            ground_truth={"expected_sources": ["published.pdf"]},
+            citation_sources=["other.pdf", "/public/published.pdf"],
+            top_k=3,
+        )
+
+        assert result["returned_sources"] == ["other.pdf", "published.pdf"]
+        assert result["source_level"]["first_relevant_rank"] == 2
+
+    def test_empty_results_with_ground_truth_are_a_real_miss(self) -> None:
+        result = CustomEvaluator().evaluate(
+            "q",
+            [],
+            ground_truth={"expected_sources": ["policy.pdf"]},
+            top_k=3,
+        )
+
+        assert result["evaluation_status"] == "evaluated"
+        assert result["source_level"]["hit_at_3"] == 0.0
+        assert result["source_level"]["mrr"] == 0.0

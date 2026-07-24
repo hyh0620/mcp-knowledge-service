@@ -237,7 +237,9 @@ initialize -> tools/list -> query_knowledge_hub
 
 已保存的历史 ingestion 说明记录了 salon 示例的 7 个 PDF、24 个 chunks、24 个 vectors 和 24 个 BM25 documents；本次 README 修改未重新执行 ingestion。该结果只说明示例数据链路和索引规模，不是通用检索质量 benchmark。
 
-仓库内未保存 salon 检索集的 Hit@1、Hit@3 或 MRR 结果，因此本 README 不声明这些指标。构建检索 Golden Dataset 和计算指标的方法见 [检索评估](docs/EVALUATION.md)。
+本仓库现有 8 条带来源 Ground Truth 的 salon 独立检索集。2026-07-24 的真实 Provider 验证结果为 Source Hit@1 `7/8`、Hit@3 `8/8`、MRR `0.9375`、Citation expected-source match `8/8`。这是小型受控语料的回归结果，不是生产准确率或通用 Benchmark。数据集、分母语义和复现方式见 [检索评估](docs/EVALUATION.md)。
+
+`tests/fixtures/golden_test_set.json` 仅是无 Ground Truth 的 sample/template；其样本状态为 `not_evaluated`，不会被记为零分或进入 Hit@K / MRR 分母。
 
 ## 故障边界
 
@@ -267,6 +269,8 @@ initialize -> tools/list -> query_knowledge_hub
 - [文档导入（Ingestion）](docs/INGESTION.md)
 - [MCP Client 接入（Integration）](docs/INTEGRATION.md)
 - [检索评估（Evaluation）](docs/EVALUATION.md)
+- [项目证据索引（Project Evidence）](docs/PROJECT_EVIDENCE.md)
+- [规划路线（Roadmap）](docs/ROADMAP.md)
 
 ## 安全说明
 
